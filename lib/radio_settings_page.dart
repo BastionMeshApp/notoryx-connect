@@ -11,6 +11,7 @@ import 'generated/meshtastic/mesh.pb.dart' show User;
 import 'generated/meshtastic/module_config.pb.dart';
 import 'proto_form.dart';
 import 'services/bastion_channel_validation.dart';
+import 'services/bastion_radio_policy.dart';
 import 'services/bastion_node_identity_validation.dart';
 import 'services/meshtastic_radio_coordinator.dart';
 
@@ -137,9 +138,9 @@ class RadioSettingsPage extends StatelessWidget {
       subtitle: Text(detail),
       trailing: const Icon(Icons.chevron_right),
       enabled: radio.canAdminister,
-      onTap: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute<void>(builder: (_) => page())),
+      onTap: () =>
+          Navigator.of(context)
+              .push(MaterialPageRoute<void>(builder: (_) => page())),
     ),
   );
 }
@@ -319,6 +320,7 @@ Widget _enumField<E extends ProtobufEnum>({
   required List<E> values,
   required ValueChanged<E> onChanged,
 }) => DropdownButtonFormField<E>(
+  key: ValueKey('$label:${value.value}'),
   initialValue: values.contains(value) ? value : null,
   decoration: InputDecoration(labelText: label),
   items: [
@@ -417,13 +419,29 @@ class _LoraEditor extends StatelessWidget {
     load: () async =>
         (await radio.readConfig(AdminMessage_ConfigType.LORA_CONFIG)).lora,
     save: (draft) => radio.writeConfig(Config(lora: draft)),
-    validate: (draft) => draft.region == Config_LoRaConfig_RegionCode.UNSET
-        ? 'Choose a region before saving; the radio will not transmit without one.'
-        : null,
+    validate: (draft) {
+      if (draft.region == Config_LoRaConfig_RegionCode.UNSET) {
+        return 'Choose a region before saving; the radio will not transmit without one.';
+      }
+      if (!draft.usePreset &&
+          (draft.bandwidth <= 0 ||
+              draft.spreadFactor < 5 ||
+              draft.spreadFactor > 12 ||
+              draft.codingRate < 5 ||
+              draft.codingRate > 8)) {
+        return 'Custom settings require a positive bandwidth, spreading factor 5–12 '
+            'and coding rate denominator 5–8. Check your radio’s supported values.';
+      }
+      return null;
+    },
     warning: (original, draft) =>
         original.region != draft.region ||
             original.modemPreset != draft.modemPreset ||
-            original.usePreset != draft.usePreset
+            original.usePreset != draft.usePreset ||
+            original.bandwidth != draft.bandwidth ||
+            original.spreadFactor != draft.spreadFactor ||
+            original.codingRate != draft.codingRate ||
+            original.overrideFrequency != draft.overrideFrequency
         ? 'Changing region or modem preset disconnects this radio from '
               'nodes that keep the old settings.'
         : null,
@@ -433,7 +451,7 @@ class _LoraEditor extends StatelessWidget {
         value: draft.region,
         values: Config_LoRaConfig_RegionCode.values,
         onChanged: (v) {
-          draft.region = v;
+          BastionRadioPolicy.chooseRegion(draft, v, radio.firmwareVersion);
           changed();
         },
       ),
@@ -456,6 +474,76 @@ class _LoraEditor extends StatelessWidget {
             changed();
           },
         ),
+      if (!draft.usePreset) ...[
+        _DraftTextField(
+          label: 'Bandwidth (kHz)',
+          initial: '${draft.bandwidth}',
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            draft.bandwidth = int.tryParse(v) ?? 0;
+            changed();
+          },
+        ),
+        _DraftTextField(
+          label: 'Spreading factor',
+          initial: '${draft.spreadFactor}',
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            draft.spreadFactor = int.tryParse(v) ?? 0;
+            changed();
+          },
+        ),
+        _DraftTextField(
+          label: 'Coding rate denominator (5–8)',
+          initial: '${draft.codingRate}',
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            draft.codingRate = int.tryParse(v) ?? 0;
+            changed();
+          },
+        ),
+      ],
+      if (BastionRadioPolicy.showUsNotice(draft))
+        const Card(
+          child: Padding(
+            padding: EdgeInsets.all(12),
+            child: Text(BastionRadioPolicy.usNotice),
+          ),
+        ),
+      const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text(BastionRadioPolicy.compatibilityNotice),
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('RX boosted gain'),
+        subtitle: const Text(
+          'Internal SX126x receiver gain; separate from external LNA',
+        ),
+        value: draft.sx126xRxBoostedGain,
+        onChanged: (v) {
+          draft.sx126xRxBoostedGain = v;
+          changed();
+        },
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('External LNA'),
+        subtitle: Text(
+          BastionRadioPolicy.canControlLna(draft)
+              ? 'External receive amplifier reported by this radio'
+              : 'This radio has not reported a controllable external LNA',
+        ),
+        value: draft.femLnaMode == Config_LoRaConfig_FEM_LNA_Mode.ENABLED,
+        onChanged: BastionRadioPolicy.canControlLna(draft)
+            ? (v) {
+                draft.femLnaMode = v
+                    ? Config_LoRaConfig_FEM_LNA_Mode.ENABLED
+                    : Config_LoRaConfig_FEM_LNA_Mode.DISABLED;
+                changed();
+              }
+            : null,
+      ),
       const SizedBox(height: 16),
       Text('Hop limit: ${draft.hopLimit}'),
       Slider(
@@ -539,9 +627,9 @@ class _PositionEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _AdminEditor<Config_PositionConfig>(
     title: 'Position',
-    load: () async => (await radio.readConfig(
-      AdminMessage_ConfigType.POSITION_CONFIG,
-    )).position,
+    load: () async =>
+        (await radio.readConfig(AdminMessage_ConfigType.POSITION_CONFIG))
+            .position,
     save: (draft) => radio.writeConfig(Config(position: draft)),
     validate: (draft) =>
         draft.positionBroadcastSecs != 0 && draft.positionBroadcastSecs < 30
