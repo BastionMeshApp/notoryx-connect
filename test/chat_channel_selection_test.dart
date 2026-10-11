@@ -34,6 +34,9 @@ void main() {
     radio.disconnected = true;
     radio.notifyListeners();
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Channel 2 • Offline'), -200,
+        scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('Channel 2 • Offline'), findsOneWidget);
   });
