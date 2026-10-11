@@ -11,3 +11,6 @@ key.properties
 .DS_Store
 
 *.p12
+
+__pycache__/
+*.pyc
