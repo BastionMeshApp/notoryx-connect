@@ -1,6 +1,6 @@
 # Bastion
 
-**Bastion** is an independent Android field-mesh application developed by **BackCountrySignal**. It interoperates with devices running Meshtastic® firmware while maintaining its own name, icon, interface, and project identity.
+**Bastion** is an independent Android field-mesh application .It interoperates with devices running Meshtastic® firmware while maintaining its own name, icon, interface, and project identity.
 
 > **Independent project:** Bastion is not affiliated with, sponsored by, endorsed by, or an official application of Meshtastic LLC.
 
