@@ -36,8 +36,10 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
       if (mounted) setState(() => _status = 'Operation failed. If a restore had started, '
           'settings may be partially changed. Reconnect and check the radio before retrying.');
     } finally {
-      if (mounted) setState(() => _busy = false);
-      _password.clear();
+      if (mounted) {
+        _password.clear();
+        setState(() => _busy = false);
+      }
     }
   }
 
@@ -80,7 +82,9 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
   });
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_busy,
+    child: Scaffold(
     appBar: AppBar(title: const Text('Encrypted radio backup')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
       const Text('Backs up fresh radio configuration and modules reported by the firmware, '
@@ -110,5 +114,5 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
       if (_busy) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
       if (_status != null) Padding(padding: const EdgeInsets.all(16), child: Text(_status!)),
     ]),
-  );
+  ));
 }

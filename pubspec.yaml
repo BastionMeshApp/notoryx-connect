@@ -33,6 +33,7 @@ flutter:
   uses-material-design: true
   assets:
     - branding/bastion-icon.png
+    - licenses/meshtastic-protobufs-GPL-3.0.txt
 
 flutter_launcher_icons:
   android: true

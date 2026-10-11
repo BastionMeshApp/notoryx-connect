@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'map_page.dart';
 import 'radio_backup_page.dart';
 import 'services/bastion_message_search.dart';
@@ -14,6 +16,10 @@ import 'services/meshtastic_radio_coordinator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('licenses/meshtastic-protobufs-GPL-3.0.txt');
+    yield LicenseEntryWithLineBreaks(['Meshtastic protobufs'], text);
+  });
   await BastionTileCache.initialize();
   runApp(const BastionApp());
 }
@@ -96,7 +102,7 @@ class _BastionShellState extends State<BastionShell> {
     ),
     body: SafeArea(child: IndexedStack(index: index, children: [
       _NodesPage(discovery: ble, radio: radio, onOpenTools: () => setState(() => index = 3)),
-      _ChatsPage(
+      BastionChatsPage(
         radio: radio,
         botMode: botMode,
         awayReply: awayReply,
@@ -333,8 +339,8 @@ class _NodesPage extends StatelessWidget {
   );
 }
 
-class _ChatsPage extends StatefulWidget {
-  const _ChatsPage({
+class BastionChatsPage extends StatefulWidget {
+  const BastionChatsPage({
     required this.radio,
     required this.botMode,
     required this.awayReply,
@@ -348,10 +354,10 @@ class _ChatsPage extends StatefulWidget {
   final ValueChanged<String> onAwayReplyChanged;
 
   @override
-  State<_ChatsPage> createState() => _ChatsPageState();
+  State<BastionChatsPage> createState() => _ChatsPageState();
 }
 
-class _ChatsPageState extends State<_ChatsPage> {
+class _ChatsPageState extends State<BastionChatsPage> {
   late final TextEditingController reply =
       TextEditingController(text: widget.awayReply);
   final composer = TextEditingController();
