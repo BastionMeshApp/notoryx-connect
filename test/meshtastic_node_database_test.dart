@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:bastion/generated/meshtastic/mesh.pb.dart' as pb;
 import 'package:bastion/generated/meshtastic/portnums.pbenum.dart';
+import 'package:bastion/generated/meshtastic/telemetry.pb.dart';
 import 'package:bastion/services/meshtastic_connection_controller.dart';
 import 'package:bastion/services/meshtastic_node_database.dart';
 import 'package:bastion/services/meshtastic_radio_session.dart';
@@ -32,16 +33,58 @@ Uint8List packet(int from, PortNum port, List<int> payload, {double snr = 0}) =>
     ).writeToBuffer();
 
 void main() {
+  test(
+    '2.8 metadata removes cached battery without removing node identity',
+    () async {
+      final db = MeshtasticNodeDatabase(
+        MeshtasticRadioSession(
+          transport: _IdleTransport(),
+          connection: MeshtasticConnectionController(),
+        ),
+      );
+      final info = pb.FromRadio(
+        nodeInfo: pb.NodeInfo(
+          num: 1,
+          user: pb.User(longName: 'Field radio'),
+          deviceMetrics: DeviceMetrics(batteryLevel: 87),
+        ),
+      ).writeToBuffer();
+      db.handleEnvelope(info);
+      expect(db.nodes.single.batteryLevel, 87);
+      db.handleEnvelope(
+        pb.FromRadio(metadata: pb.DeviceMetadata(firmwareVersion: '2.8.0.abc'))
+            .writeToBuffer(),
+      );
+      expect(db.nodes.single.batteryLevel, isNull);
+      expect(db.nodes.single.longName, 'Field radio');
+      db.handleEnvelope(info);
+      expect(db.nodes.single.batteryLevel, isNull);
+      await db.dispose();
+    },
+  );
   test('decodes NodeInfo identity fields used by Bastion node list', () {
     final user = <int>[
-      0x0a, 0x09, ...'!1234abcd'.codeUnits,
-      0x12, 0x0b, ...'Ridge Relay'.codeUnits,
-      0x1a, 0x02, ...'RR'.codeUnits,
-      0x28, 0x09,
+      0x0a,
+      0x09,
+      ...'!1234abcd'.codeUnits,
+      0x12,
+      0x0b,
+      ...'Ridge Relay'.codeUnits,
+      0x1a,
+      0x02,
+      ...'RR'.codeUnits,
+      0x28,
+      0x09,
     ];
     final nodeInfo = Uint8List.fromList([
-      0x08, 0xac, 0xd7, 0xad, 0x0b,
-      0x12, user.length, ...user,
+      0x08,
+      0xac,
+      0xd7,
+      0xad,
+      0x0b,
+      0x12,
+      user.length,
+      ...user,
     ]);
 
     final node = MeshtasticNodeInfoCodec.decode(nodeInfo);
@@ -84,12 +127,20 @@ void main() {
     });
 
     test('NodeInfo carries position, battery and hops', () async {
-      db.handleEnvelope(pb.FromRadio(nodeInfo: pb.NodeInfo(
-        num: 42,
-        user: pb.User(longName: 'Ridge', shortName: 'RDG'),
-        position: pb.Position(latitudeI: 354512345, longitudeI: -838765432, altitude: 1200),
-        hopsAway: 2,
-      )).writeToBuffer());
+      db.handleEnvelope(
+        pb.FromRadio(
+          nodeInfo: pb.NodeInfo(
+            num: 42,
+            user: pb.User(longName: 'Ridge', shortName: 'RDG'),
+            position: pb.Position(
+              latitudeI: 354512345,
+              longitudeI: -838765432,
+              altitude: 1200,
+            ),
+            hopsAway: 2,
+          ),
+        ).writeToBuffer(),
+      );
       await Future<void>.delayed(Duration.zero);
       final node = db.nodes.single;
       expect(node.latitude, closeTo(35.4512345, 1e-7));
@@ -100,50 +151,95 @@ void main() {
     });
 
     test('position packets move a node without an identity update', () async {
-      db.handleEnvelope(packet(7, PortNum.POSITION_APP,
-          pb.Position(latitudeI: 100000000, longitudeI: 200000000, time: 1760000000).writeToBuffer(),
-          snr: 6.5));
+      db.handleEnvelope(
+        packet(
+          7,
+          PortNum.POSITION_APP,
+          pb.Position(
+            latitudeI: 100000000,
+            longitudeI: 200000000,
+            time: 1760000000,
+          ).writeToBuffer(),
+          snr: 6.5,
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
       final node = db.nodes.single;
       expect(node.num, 7);
       expect(node.latitude, 10.0);
       expect(node.longitude, 20.0);
-      expect(node.positionTime, DateTime.fromMillisecondsSinceEpoch(1760000000000, isUtc: true));
+      expect(
+        node.positionTime,
+        DateTime.fromMillisecondsSinceEpoch(1760000000000, isUtc: true),
+      );
       expect(node.lastHeard, heardAt);
       expect(node.snr, 6.5);
       expect(identityUpdates, isEmpty);
     });
 
-    test('ignores the 0,0 no-fix position but keeps the last good one', () async {
-      db.handleEnvelope(packet(7, PortNum.POSITION_APP,
-          pb.Position(latitudeI: 100000000, longitudeI: 200000000).writeToBuffer()));
-      db.handleEnvelope(packet(7, PortNum.POSITION_APP,
-          pb.Position(latitudeI: 0, longitudeI: 0).writeToBuffer()));
-      await Future<void>.delayed(Duration.zero);
-      expect(db.nodes.single.latitude, 10.0);
-    });
+    test(
+      'ignores the 0,0 no-fix position but keeps the last good one',
+      () async {
+        db.handleEnvelope(
+          packet(
+            7,
+            PortNum.POSITION_APP,
+            pb.Position(
+              latitudeI: 100000000,
+              longitudeI: 200000000,
+            ).writeToBuffer(),
+          ),
+        );
+        db.handleEnvelope(
+          packet(
+            7,
+            PortNum.POSITION_APP,
+            pb.Position(latitudeI: 0, longitudeI: 0).writeToBuffer(),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(db.nodes.single.latitude, 10.0);
+      },
+    );
 
-    test('node-info packets rename a node and count as identity updates', () async {
-      db.handleEnvelope(packet(9, PortNum.NODEINFO_APP,
-          pb.User(longName: 'Base Camp', shortName: 'BC').writeToBuffer()));
-      await Future<void>.delayed(Duration.zero);
-      expect(db.nodes.single.displayName, 'Base Camp');
-      expect(identityUpdates.single.shortName, 'BC');
-    });
+    test(
+      'node-info packets rename a node and count as identity updates',
+      () async {
+        db.handleEnvelope(
+          packet(
+            9,
+            PortNum.NODEINFO_APP,
+            pb.User(longName: 'Base Camp', shortName: 'BC').writeToBuffer(),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(db.nodes.single.displayName, 'Base Camp');
+        expect(identityUpdates.single.shortName, 'BC');
+      },
+    );
 
     test('records which nodes a node hears directly', () async {
-      db.handleEnvelope(packet(0x10, PortNum.NEIGHBORINFO_APP, pb.NeighborInfo(
-        nodeId: 0x10,
-        neighbors: [
-          pb.Neighbor(nodeId: 0x20, snr: 7.25),
-          pb.Neighbor(nodeId: 0x30, snr: -4.5),
-          pb.Neighbor(nodeId: 0x10, snr: 1),
-        ],
-      ).writeToBuffer()));
+      db.handleEnvelope(
+        packet(
+          0x10,
+          PortNum.NEIGHBORINFO_APP,
+          pb.NeighborInfo(
+            nodeId: 0x10,
+            neighbors: [
+              pb.Neighbor(nodeId: 0x20, snr: 7.25),
+              pb.Neighbor(nodeId: 0x30, snr: -4.5),
+              pb.Neighbor(nodeId: 0x10, snr: 1),
+            ],
+          ).writeToBuffer(),
+        ),
+      );
       await Future<void>.delayed(Duration.zero);
       final report = db.neighborReports[0x10]!;
       expect(report.receivedAt, heardAt);
-      expect(report.neighbors.map((n) => n.nodeNum), [0x20, 0x30], reason: 'self-links dropped');
+      expect(report.neighbors.map((n) => n.nodeNum), [
+        0x20,
+        0x30,
+      ], reason: 'self-links dropped');
       expect(report.neighbors.first.snr, 7.25);
       expect(identityUpdates, isEmpty);
     });
