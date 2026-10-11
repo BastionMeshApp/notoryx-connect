@@ -1,9 +1,14 @@
-import 'dart:isolate';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/bastion_encrypted_backup.dart';
 import 'services/bastion_radio_backup.dart';
 import 'services/meshtastic_radio_coordinator.dart';
+
+Future<String> _encryptBackup((String, String) input) =>
+    BastionEncryptedBackup().encrypt(input.$1, input.$2);
+Future<String> _decryptBackup((String, String) input) =>
+    BastionEncryptedBackup().decrypt(input.$1, input.$2);
 
 /// Explicit export/import of encrypted settings; passwords are never persisted.
 class RadioBackupPage extends StatefulWidget {
@@ -48,7 +53,7 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
     if (password.length < 12) throw const FormatException('Use at least 12 characters for the backup password.');
     final snapshot = await BastionRadioBackup(widget.radio).capture();
     final plain = await snapshot.encode();
-    final encrypted = await Isolate.run(() => BastionEncryptedBackup().encrypt(plain, password));
+    final encrypted = await compute(_encryptBackup, (plain, password));
     if (!mounted) return;
     _encrypted.text = encrypted;
     setState(() => _status = 'Encrypted backup ready. Copy it and save it in a text file. '
@@ -58,7 +63,7 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
   Future<void> _restore() => _run(() async {
     final password = _password.text;
     final encrypted = _encrypted.text;
-    final plain = await Isolate.run(() => BastionEncryptedBackup().decrypt(encrypted, password));
+    final plain = await compute(_decryptBackup, (encrypted, password));
     final snapshot = await RadioBackupSnapshot.decode(plain);
     if (!mounted) return;
     final target = widget.radio.backupNodeNum;
