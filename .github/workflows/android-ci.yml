@@ -31,6 +31,8 @@ jobs:
           flutter create --platforms=android --org org.backcountrysignal --project-name bastion .
           # Flutter's default template test references MyApp, not BastionApp.
           rm -f test/widget_test.dart
+      - name: Verify release signing preparation
+        run: python3 test/signing_scripts_test.py
       - name: Prepare permissions
         run: python3 scripts/prepare_android.py
       - name: Install dependencies and icons
