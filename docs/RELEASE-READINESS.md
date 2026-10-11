@@ -31,7 +31,7 @@ is included in a release. The new backup restore does its own readback verificat
 - Verify signing-key backup/recovery before public distribution.
 
 ## Signing and distribution
-The signing key must stay outside the repository and have an offline recovery copy.
+A password-protected RSA-3072 signing key was generated with owner approval. A protected local recovery copy exists outside the repository, and the four GitHub encrypted secrets are configured. The owner must make an offline recovery copy.
 GitHub repository secrets: BASTION_KEYSTORE_BASE64, BASTION_STORE_PASSWORD,
 BASTION_KEY_PASSWORD, BASTION_KEY_ALIAS. Only the manually started main-branch signed
 candidate workflow uses them. Existing development APKs use a different certificate:

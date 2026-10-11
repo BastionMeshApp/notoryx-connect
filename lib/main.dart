@@ -472,7 +472,9 @@ class _ChatsPageState extends State<BastionChatsPage> {
                 initialValue: channel,
                 decoration: const InputDecoration(labelText: 'Channel', border: OutlineInputBorder()),
                 items: channels.isEmpty
-                    ? [const DropdownMenuItem(value: 0, child: Text('Channel 0 • Broadcast'))]
+                    ? [const DropdownMenuItem(value: 0, child: Text('Channel 0 • Broadcast')),
+                       if (channel != 0) DropdownMenuItem(value: channel,
+                           child: Text('Channel $channel • Offline'))]
                     : [for (final c in channels) DropdownMenuItem(value: c.index,
                         child: Text('Channel ${c.index} • ${c.name.isEmpty ? 'Default' : c.name}'))],
                 onChanged: (value) { if (value != null) setState(() => channel = value); },
