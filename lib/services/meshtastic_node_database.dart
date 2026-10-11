@@ -6,6 +6,7 @@ import 'package:protobuf/protobuf.dart';
 import '../generated/meshtastic/mesh.pb.dart' as pb;
 import '../generated/meshtastic/portnums.pbenum.dart';
 import 'meshtastic_radio_session.dart';
+import 'bastion_radio_policy.dart';
 
 class MeshtasticNode {
   const MeshtasticNode({
@@ -50,6 +51,21 @@ class MeshtasticNode {
 
   bool get hasPosition => latitude != null && longitude != null;
 
+  MeshtasticNode _withoutBattery() => MeshtasticNode(
+    num: num,
+    id: id,
+    longName: longName,
+    shortName: shortName,
+    hardwareModel: hardwareModel,
+    latitude: latitude,
+    longitude: longitude,
+    altitudeMeters: altitudeMeters,
+    positionTime: positionTime,
+    lastHeard: lastHeard,
+    snr: snr,
+    hopsAway: hopsAway,
+  );
+
   String get displayName => (longName?.isNotEmpty ?? false)
       ? longName!
       : (id ?? '!${num.toRadixString(16).padLeft(8, '0')}');
@@ -65,22 +81,21 @@ class MeshtasticNode {
     DateTime? positionTime,
     DateTime? lastHeard,
     double? snr,
-  }) =>
-      MeshtasticNode(
-        num: num,
-        id: id ?? this.id,
-        longName: longName ?? this.longName,
-        shortName: shortName ?? this.shortName,
-        hardwareModel: hardwareModel ?? this.hardwareModel,
-        latitude: latitude ?? this.latitude,
-        longitude: longitude ?? this.longitude,
-        altitudeMeters: altitudeMeters ?? this.altitudeMeters,
-        positionTime: positionTime ?? this.positionTime,
-        lastHeard: lastHeard ?? this.lastHeard,
-        snr: snr ?? this.snr,
-        hopsAway: hopsAway,
-        batteryLevel: batteryLevel,
-      );
+  }) => MeshtasticNode(
+    num: num,
+    id: id ?? this.id,
+    longName: longName ?? this.longName,
+    shortName: shortName ?? this.shortName,
+    hardwareModel: hardwareModel ?? this.hardwareModel,
+    latitude: latitude ?? this.latitude,
+    longitude: longitude ?? this.longitude,
+    altitudeMeters: altitudeMeters ?? this.altitudeMeters,
+    positionTime: positionTime ?? this.positionTime,
+    lastHeard: lastHeard ?? this.lastHeard,
+    snr: snr ?? this.snr,
+    hopsAway: hopsAway,
+    batteryLevel: batteryLevel,
+  );
 }
 
 /// Which nodes one node hears directly, from its NEIGHBORINFO_APP broadcast.
@@ -105,7 +120,7 @@ class MeshNeighborReport {
 /// fires only for identity updates, not for every packet heard.
 class MeshtasticNodeDatabase {
   MeshtasticNodeDatabase(this.session, {DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now;
+    : _clock = clock ?? DateTime.now;
 
   final MeshtasticRadioSession session;
   final DateTime Function() _clock;
@@ -116,6 +131,7 @@ class MeshtasticNodeDatabase {
   final StreamController<MeshtasticNode> _nodeUpdates =
       StreamController<MeshtasticNode>.broadcast();
   StreamSubscription<Uint8List>? _subscription;
+  bool _ignoreCachedBattery = false;
 
   List<MeshtasticNode> get nodes {
     final values = _nodes.values.toList()
@@ -124,7 +140,8 @@ class MeshtasticNodeDatabase {
   }
 
   /// Latest neighbor report per reporting node.
-  Map<int, MeshNeighborReport> get neighborReports => Map.unmodifiable(_neighborReports);
+  Map<int, MeshNeighborReport> get neighborReports =>
+      Map.unmodifiable(_neighborReports);
 
   Stream<List<MeshtasticNode>> get changes => _changes.stream;
   Stream<MeshtasticNode> get nodeUpdates => _nodeUpdates.stream;
@@ -142,9 +159,26 @@ class MeshtasticNodeDatabase {
     } on InvalidProtocolBufferException {
       return;
     }
-    if (envelope.hasNodeInfo()) {
+    if (envelope.hasMetadata()) {
+      _ignoreCachedBattery = BastionRadioPolicy.firmwareAtLeast28(
+        envelope.metadata.firmwareVersion,
+      );
+      if (_ignoreCachedBattery) {
+        // Metadata may follow NodeInfo. Discard only un-timestamped metrics.
+        for (final key in _nodes.keys.toList()) {
+          _nodes[key] = _nodes[key]!._withoutBattery();
+        }
+        _changes.add(nodes);
+      }
+    } else if (envelope.hasNodeInfo()) {
       if (!envelope.nodeInfo.hasNum()) return;
-      _store(MeshtasticNodeInfoCodec.fromProto(envelope.nodeInfo), identity: true);
+      _store(
+        MeshtasticNodeInfoCodec.fromProto(
+          envelope.nodeInfo,
+          includeCachedBattery: !_ignoreCachedBattery,
+        ),
+        identity: true,
+      );
     } else if (envelope.hasPacket() && envelope.packet.hasDecoded()) {
       _handlePacket(envelope.packet);
     }
@@ -161,9 +195,15 @@ class MeshtasticNodeDatabase {
     final data = packet.decoded;
     try {
       if (data.portnum == PortNum.POSITION_APP) {
-        node = MeshtasticNodeInfoCodec.applyPosition(node, pb.Position.fromBuffer(data.payload));
+        node = MeshtasticNodeInfoCodec.applyPosition(
+          node,
+          pb.Position.fromBuffer(data.payload),
+        );
       } else if (data.portnum == PortNum.NODEINFO_APP) {
-        node = MeshtasticNodeInfoCodec.applyUser(node, pb.User.fromBuffer(data.payload));
+        node = MeshtasticNodeInfoCodec.applyUser(
+          node,
+          pb.User.fromBuffer(data.payload),
+        );
         identity = true;
       } else if (data.portnum == PortNum.NEIGHBORINFO_APP) {
         final info = pb.NeighborInfo.fromBuffer(data.payload);
@@ -173,7 +213,8 @@ class MeshtasticNodeDatabase {
           receivedAt: _clock(),
           neighbors: [
             for (final n in info.neighbors)
-              if (n.nodeId != 0 && n.nodeId != reporter) (nodeNum: n.nodeId, snr: n.snr),
+              if (n.nodeId != 0 && n.nodeId != reporter)
+                (nodeNum: n.nodeId, snr: n.snr),
           ],
         );
       }
@@ -210,15 +251,24 @@ abstract final class MeshtasticNodeInfoCodec {
     return fromProto(info);
   }
 
-  static MeshtasticNode fromProto(pb.NodeInfo info) {
+  static MeshtasticNode fromProto(
+    pb.NodeInfo info, {
+    bool includeCachedBattery = true,
+  }) {
     var node = MeshtasticNode(
       num: info.num,
       lastHeard: info.lastHeard == 0
           ? null
-          : DateTime.fromMillisecondsSinceEpoch(info.lastHeard * 1000, isUtc: true),
+          : DateTime.fromMillisecondsSinceEpoch(
+              info.lastHeard * 1000,
+              isUtc: true,
+            ),
       snr: info.hasSnr() ? info.snr : null,
       hopsAway: info.hasHopsAway() ? info.hopsAway : null,
-      batteryLevel: info.hasDeviceMetrics() && info.deviceMetrics.hasBatteryLevel()
+      batteryLevel:
+          includeCachedBattery &&
+              info.hasDeviceMetrics() &&
+              info.deviceMetrics.hasBatteryLevel()
           ? info.deviceMetrics.batteryLevel
           : null,
     );
@@ -227,7 +277,8 @@ abstract final class MeshtasticNodeInfoCodec {
     return node;
   }
 
-  static MeshtasticNode applyUser(MeshtasticNode node, pb.User user) => node._copy(
+  static MeshtasticNode applyUser(MeshtasticNode node, pb.User user) =>
+      node._copy(
         id: user.id.isEmpty ? null : user.id,
         longName: user.longName.isEmpty ? null : user.longName,
         shortName: user.shortName.isEmpty ? null : user.shortName,
@@ -235,18 +286,25 @@ abstract final class MeshtasticNodeInfoCodec {
       );
 
   /// Ignores positions without coordinates and the 0,0 "no fix" value.
-  static MeshtasticNode applyPosition(MeshtasticNode node, pb.Position position) {
+  static MeshtasticNode applyPosition(
+    MeshtasticNode node,
+    pb.Position position,
+  ) {
     if (!position.hasLatitudeI() || !position.hasLongitudeI()) return node;
     final lat = position.latitudeI / 1e7;
     final lon = position.longitudeI / 1e7;
-    if ((lat == 0 && lon == 0) || lat.abs() > 90 || lon.abs() > 180) return node;
+    if ((lat == 0 && lon == 0) || lat.abs() > 90 || lon.abs() > 180)
+      return node;
     return node._copy(
       latitude: lat,
       longitude: lon,
       altitudeMeters: position.hasAltitude() ? position.altitude : null,
       positionTime: position.time == 0
           ? null
-          : DateTime.fromMillisecondsSinceEpoch(position.time * 1000, isUtc: true),
+          : DateTime.fromMillisecondsSinceEpoch(
+              position.time * 1000,
+              isUtc: true,
+            ),
     );
   }
 }

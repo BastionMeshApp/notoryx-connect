@@ -2,6 +2,9 @@ import 'package:fixnum/fixnum.dart';
 import 'package:flutter/material.dart';
 import 'package:protobuf/protobuf.dart';
 
+import 'generated/meshtastic/config.pb.dart';
+import 'services/bastion_radio_policy.dart';
+
 /// Renders an editable form for any generated protobuf message.
 ///
 /// Used for Meshtastic settings that have no hand-built editor, so every
@@ -71,6 +74,17 @@ class ProtoFieldList extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      if (message is Config_LoRaConfig &&
+          BastionRadioPolicy.showUsNotice(message as Config_LoRaConfig))
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(BastionRadioPolicy.usNotice),
+        ),
+      if (message is Config_LoRaConfig)
+        const Padding(
+          padding: EdgeInsets.all(12),
+          child: Text(BastionRadioPolicy.compatibilityNotice),
+        ),
       for (final field in message.info_.sortedByTag) _field(context, field),
     ],
   );
@@ -80,6 +94,20 @@ class ProtoFieldList extends StatelessWidget {
     final name = label(field.name);
     final base = _base(field.type);
     final value = message.getField(tag);
+
+    // The generic editor must honor the same capability gate as the LoRa page.
+    if (message is Config_LoRaConfig &&
+        tag == 106 &&
+        !BastionRadioPolicy.canControlLna(message as Config_LoRaConfig)) {
+      return const ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text('External LNA'),
+        subtitle: Text(
+          'This radio has not reported a controllable external LNA',
+        ),
+        enabled: false,
+      );
+    }
 
     if (field.isRepeated || field.isMapField) {
       final count = (value as List).length;

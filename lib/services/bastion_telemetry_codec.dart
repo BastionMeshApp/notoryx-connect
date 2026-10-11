@@ -12,6 +12,7 @@ class BastionDeviceTelemetry {
     this.voltage,
     this.channelUtilization,
     this.airUtilTx,
+    this.sampleTime,
   });
 
   final int from;
@@ -19,6 +20,11 @@ class BastionDeviceTelemetry {
   final double? voltage;
   final double? channelUtilization;
   final double? airUtilTx;
+  final int? sampleTime;
+
+  bool batteryIsFreshSince(DateTime since) =>
+      sampleTime != null &&
+      sampleTime! >= since.toUtc().millisecondsSinceEpoch ~/ 1000;
 }
 
 abstract final class BastionTelemetryCodec {
@@ -46,6 +52,7 @@ abstract final class BastionTelemetryCodec {
     }
     return BastionDeviceTelemetry(
       from: from,
+      sampleTime: telemetry.varint(1),
       batteryLevel: battery,
       voltage: voltage,
       channelUtilization: channel,
@@ -78,7 +85,8 @@ class _Fields {
       offset = key.$2;
       final field = key.$1 >> 3;
       final wire = key.$1 & 7;
-      if (field == 0) throw const FormatException('Invalid protobuf field zero');
+      if (field == 0)
+        throw const FormatException('Invalid protobuf field zero');
       Object value;
       switch (wire) {
         case 0:
@@ -97,8 +105,11 @@ class _Fields {
           offset += length.$1;
         case 5:
           _require(offset, 4);
-          value = ByteData.sublistView(source, offset, offset + 4)
-              .getUint32(0, Endian.little);
+          value = ByteData.sublistView(
+            source,
+            offset,
+            offset + 4,
+          ).getUint32(0, Endian.little);
           offset += 4;
         default:
           throw FormatException('Unsupported protobuf wire type $wire');
