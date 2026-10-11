@@ -46,7 +46,7 @@ See [TRADEMARKS.md](TRADEMARKS.md) for Bastion's trademark-use rules.
 
 Meshtastic software components are released under various licenses. Bastion must preserve all applicable license notices, attribution, source-distribution obligations, and other requirements for any upstream component that is actually incorporated into the project.
 
-Bastion's current protocol codec is independently implemented for interoperability rather than copied generated protobuf source. Before any future upstream source, generated code, library, or asset is incorporated, its license must be reviewed and its obligations documented.
+Bastion includes generated protocol bindings from `meshtastic/protobufs` v2.8.1. Its GPL-3.0 license text is preserved in `licenses/meshtastic-protobufs-GPL-3.0.txt`. Production distribution requires final application-license and corresponding-source review; see [release readiness](docs/RELEASE-READINESS.md).
 
 Third-party Flutter/Dart dependencies remain subject to their respective licenses.
 
@@ -95,3 +95,7 @@ Bastion may support field and emergency-communications workflows, but software a
 ## Contributing
 
 Testing, bug reports, hardware compatibility reports, and feature ideas are welcome. Contributions must preserve Bastion's independent branding and comply with [TRADEMARKS.md](TRADEMARKS.md) and all applicable third-party licenses.
+
+## Current completion and release gates
+
+See [release readiness](docs/RELEASE-READINESS.md) and [branch/PR triage](docs/BRANCH-AND-PR-TRIAGE.md). Encrypted radio backup/restore excludes device identity keys, session credentials and phone history. Signed candidates are built through the manual main-branch workflow; they are not automatically published.

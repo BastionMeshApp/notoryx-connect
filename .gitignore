@@ -9,3 +9,5 @@ coverage/
 key.properties
 *.env
 .DS_Store
+
+*.p12

@@ -1,7 +1,7 @@
 name: bastion
 description: Independent field-mesh companion compatible with Meshtastic® firmware.
 publish_to: none
-version: 0.1.0+1
+version: 0.1.1+2
 
 environment:
   sdk: '>=3.9.0 <4.0.0'
@@ -10,14 +10,15 @@ dependencies:
   flutter:
     sdk: flutter
   universal_ble: 1.2.0
-  shared_preferences: 2.5.5
+  shared_preferences: 2.5.6
+  cryptography: 2.9.0
   protobuf: 6.1.0
   fixnum: 1.1.1
   qr_flutter: 4.1.0
   flutter_foreground_task: 10.0.0
   flutter_map: 8.3.2
   flutter_local_notifications: 22.3.1
-  geolocator: 14.0.3
+  geolocator: 14.1.1
   mobile_scanner: 7.4.2
   path_provider: 2.1.6
   latlong2: 0.10.1
