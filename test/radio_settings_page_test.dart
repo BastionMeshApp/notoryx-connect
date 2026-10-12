@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bastion/radio_settings_page.dart';
 import 'package:bastion/generated/meshtastic/admin.pb.dart';
 import 'package:bastion/generated/meshtastic/mesh.pb.dart' show User;
@@ -17,15 +18,33 @@ class SaveVerificationRadio extends MeshtasticRadioCoordinator {
   SaveVerificationRadio({required this.apply});
   final bool apply;
   int reads = 0, writes = 0;
+  Completer<void>? reconnect;
   User owner = User(longName: 'Trail', shortName: 'TR');
   @override bool get canAdminister => true;
   @override int? get localNodeNum => 42;
   @override Future<User> readOwner() async { reads++; return owner.deepCopy(); }
   @override Future<void> writeOwner(User value) async { writes++; if (apply) owner = value.deepCopy(); }
-  @override Future<void> waitForSettingsRadio(int node) async {}
+  @override Future<void> waitForSettingsRadio(int node) async { await reconnect?.future; }
 }
 
 void main() {
+  testWidgets('draft text remains correct while reconnect verification is pending', (tester) async {
+    final radio = SaveVerificationRadio(apply: true)..reconnect = Completer<void>();
+    addTearDown(radio.dispose);
+    await tester.pumpWidget(MaterialApp(home: RadioSettingsPage(radio: radio)));
+    await tester.tap(find.text('Owner')); await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Trail Updated'); await tester.pump();
+    await tester.tap(find.text('SAVE')); await tester.pumpAndSettle();
+    await tester.tap(find.text('Save')); await tester.pump(); await tester.pump(const Duration(milliseconds: 100));
+    expect(radio.writes, 1); expect(radio.reads, 1);
+    final fields = tester.widgetList<TextField>(find.byType(TextField)).toList();
+    expect(fields[0].controller!.text, 'Trail Updated'); expect(fields[1].controller!.text, 'TR');
+    expect(find.textContaining('Waiting for reconnect'), findsOneWidget);
+    radio.reconnect!.complete(); await tester.pumpAndSettle();
+    expect(radio.reads, 2); expect(find.text('Owner saved and verified from radio.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final applied in [true, false]) {
     testWidgets('owner save closes only after matching fresh read: $applied', (tester) async {
       final radio = SaveVerificationRadio(apply: applied); addTearDown(radio.dispose);
@@ -43,6 +62,7 @@ void main() {
         expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'SAVE')).onPressed, isNull);
         await tester.tap(find.text('Reload from radio')); await tester.pumpAndSettle();
         expect(radio.writes, 1); expect(radio.reads, 3);
+        expect(tester.widget<TextField>(find.byType(TextField).first).controller!.text, 'Trail');
       }
       expect(tester.takeException(), isNull);
     });

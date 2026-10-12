@@ -45,6 +45,13 @@ void main() {
     events.clear(); await save(wanted);
     expect(events, ['write', 'wait:42', 'read']);
   });
+  test('later draft edits cannot turn an ignored write into a verified save', () async {
+    final before = Config_LoRaConfig(hopLimit: 3), wanted = Config_LoRaConfig(hopLimit: 4);
+    await expectLater(BastionSettingsVerifier.save(node: 42, currentNode: () => 42,
+      original: before, requested: wanted, write: () async {},
+      waitForRadio: (_) async { wanted.hopLimit = 3; },
+      read: () async => before), throwsStateError);
+  });
   test('wrong radio and reconnect timeout never resend', () async {
     var node = 42, writes = 0, reads = 0;
     final before = Config_LoRaConfig(hopLimit: 3), wanted = Config_LoRaConfig(hopLimit: 4);

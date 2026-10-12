@@ -53,12 +53,14 @@ abstract final class BastionSettingsVerifier {
       if (currentNode() != node) throw StateError('Connected radio changed. Reload settings before continuing.');
     }
     checkIdentity();
+    final before = original.deepCopy();
+    final submitted = requested.deepCopy();
     await write();
     await waitForRadio(node);
     checkIdentity();
     final observed = await read();
     checkIdentity();
-    if (!matchesChanges(original, requested, observed)) {
+    if (!matchesChanges(before, submitted, observed)) {
       throw StateError('Radio acknowledged the write, but the requested changes were not confirmed by a fresh read. Reload before changing anything else.');
     }
     return observed;

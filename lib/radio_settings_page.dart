@@ -194,6 +194,7 @@ class _AdminEditorState<T extends GeneratedMessage>
   bool _saveAttempted = false;
   String? _saveProblem;
   int? _loadedNode;
+  int _readRevision = 0;
 
   @override
   void initState() {
@@ -216,6 +217,7 @@ class _AdminEditorState<T extends GeneratedMessage>
       if (!mounted) return;
       _loadedNode = node;
       setState(() {
+        _readRevision++;
         _original = value;
         _draft = value.deepCopy();
       });
@@ -260,12 +262,14 @@ class _AdminEditorState<T extends GeneratedMessage>
       setState(() => _saveProblem = 'Radio identity changed or is unavailable. Reload before saving.');
       return;
     }
+    FocusScope.of(context).unfocus();
+    final submitted = draft.deepCopy();
     setState(() { _saving = true; _saveAttempted = true; _saveProblem = null; });
     try {
       await BastionSettingsVerifier.save<T>(
         node: node, currentNode: () => widget.radio.localNodeNum,
-        original: original, requested: draft,
-        write: () => widget.save(draft), waitForRadio: widget.radio.waitForSettingsRadio,
+        original: original, requested: submitted,
+        write: () => widget.save(submitted), waitForRadio: widget.radio.waitForSettingsRadio,
         read: widget.load,
       );
       if (!mounted) return;
@@ -326,7 +330,11 @@ class _AdminEditorState<T extends GeneratedMessage>
               if (_saveProblem != null) Semantics(liveRegion: true, child: Text(_saveProblem!)),
               if (_saveAttempted && !_saving || _saveProblem != null && !_saving)
                 TextButton(onPressed: _reload, child: const Text('Reload from radio')),
-              ...widget.fields(draft, () => setState(() {})),
+              KeyedSubtree(
+                key: ValueKey('settings-fields:$_readRevision'),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: widget.fields(draft, () => setState(() {}))),
+              ),
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
