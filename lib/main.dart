@@ -601,9 +601,9 @@ class _ChatsPageState extends State<BastionChatsPage> {
               color: BastionApp.signal),
             title: const Text('BOT MODE',
               style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(widget.botMode
+            subtitle: Text(widget.radio.botProblem ?? (widget.botMode
                 ? 'ACTIVE • DM auto-reply + !help / !status • quiet hours + airtime limits'
-                : 'Automatic replies are off'),
+                : 'Automatic replies are off')),
             value: widget.botMode,
             onChanged: widget.onBotModeChanged,
           )),

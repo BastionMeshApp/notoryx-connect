@@ -221,6 +221,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   List<MeshtasticNode> get nodes => _nodes;
   List<BastionChatMessage> get messages =>
       _messaging?.messages ?? _archivedMessages;
+  String? get botProblem => _messaging?.botProblem;
   int get pendingMessageCount =>
       _messaging?.pending.length ?? _archivedPending.length;
   bool get busy => _busy;

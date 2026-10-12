@@ -52,6 +52,7 @@ class MeshtasticMessagingService {
   List<PendingTextMessage> get pending => List.unmodifiable(_pending);
   List<BastionChatMessage> get messages => List.unmodifiable(_messages);
   bool get botEnabled => _botEnabled;
+  String? botProblem;
 
   Future<void> start() async {
     if (!_started) {
@@ -272,11 +273,13 @@ class MeshtasticMessagingService {
       '!status' => 'Bastion: online • radio READY',
       _ => 'Bastion: $_botReply',
     };
-    await sendText(
-      text: response,
-      destination: message.from,
-      channel: message.channel,
-    );
+    try {
+      await sendText(text: response, destination: message.from, channel: message.channel);
+      botProblem = null;
+    } catch (error) {
+      botProblem = 'Automatic reply failed: $error';
+      _notify();
+    }
   }
 
   void _onConnectionChanged() {
