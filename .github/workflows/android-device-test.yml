@@ -29,11 +29,20 @@ jobs:
           flutter pub get
           dart run flutter_launcher_icons
           flutter build apk --debug
+      - name: Enable emulator hardware acceleration
+        run: |
+          # Limit device access to this disposable runner's job user.
+          test -e /dev/kvm
+          sudo chown "$(id -un)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Boot emulator and install APK
+        timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
+          disable-linux-hw-accel: false
           script: |
             adb install -r build/app/outputs/flutter-apk/app-debug.apk
             adb shell pm list packages | grep org.backcountrysignal
