@@ -12,6 +12,7 @@ import 'generated/meshtastic/module_config.pb.dart';
 import 'proto_form.dart';
 import 'services/bastion_channel_validation.dart';
 import 'services/bastion_radio_policy.dart';
+import 'services/bastion_settings_verifier.dart';
 import 'services/bastion_node_identity_validation.dart';
 import 'services/meshtastic_radio_coordinator.dart';
 import 'services/meshtastic_admin_session.dart';
@@ -102,6 +103,7 @@ class RadioSettingsPage extends StatelessWidget {
                 _sectionName(type),
                 radio.availability('config:${type.value}'),
                 () => _OneofEditor(
+                  radio: radio,
                   title: _sectionName(type),
                   load: () async => await radio.readConfig(type),
                   save: (section) => radio.writeConfig(section as Config),
@@ -122,6 +124,7 @@ class RadioSettingsPage extends StatelessWidget {
               _sectionName(type),
               radio.availability('module:${type.value}'),
               () => _OneofEditor(
+                radio: radio,
                 title: _sectionName(type),
                 load: () async => await radio.readModuleConfig(type),
                 save: (section) =>
@@ -157,6 +160,7 @@ class RadioSettingsPage extends StatelessWidget {
 /// Shared load → edit → confirm → write flow for one protobuf message.
 class _AdminEditor<T extends GeneratedMessage> extends StatefulWidget {
   const _AdminEditor({
+    required this.radio,
     required this.title,
     required this.load,
     required this.save,
@@ -166,6 +170,7 @@ class _AdminEditor<T extends GeneratedMessage> extends StatefulWidget {
   });
 
   final String title;
+  final MeshtasticRadioCoordinator radio;
   final Future<T> Function() load;
   final Future<void> Function(T draft) save;
   final List<Widget> Function(T draft, VoidCallback changed) fields;
@@ -186,6 +191,9 @@ class _AdminEditorState<T extends GeneratedMessage>
   T? _draft;
   Object? _loadError;
   bool _saving = false;
+  bool _saveAttempted = false;
+  String? _saveProblem;
+  int? _loadedNode;
 
   @override
   void initState() {
@@ -198,10 +206,15 @@ class _AdminEditorState<T extends GeneratedMessage>
       _loadError = null;
       _original = null;
       _draft = null;
+      _saveAttempted = false;
+      _saveProblem = null;
     });
     try {
+      final node = widget.radio.localNodeNum;
       final value = await widget.load();
+      if (widget.radio.localNodeNum != node) throw StateError('Connected radio changed while loading. Retry the read.');
       if (!mounted) return;
+      _loadedNode = node;
       setState(() {
         _original = value;
         _draft = value.deepCopy();
@@ -214,7 +227,7 @@ class _AdminEditorState<T extends GeneratedMessage>
   Future<void> _save() async {
     final original = _original;
     final draft = _draft;
-    if (original == null || draft == null) return;
+    if (original == null || draft == null || _saveAttempted) return;
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final warning = widget.warning?.call(original, draft);
@@ -242,17 +255,27 @@ class _AdminEditorState<T extends GeneratedMessage>
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _saving = true);
+    final node = _loadedNode;
+    if (node == null || widget.radio.localNodeNum != node) {
+      setState(() => _saveProblem = 'Radio identity changed or is unavailable. Reload before saving.');
+      return;
+    }
+    setState(() { _saving = true; _saveAttempted = true; _saveProblem = null; });
     try {
-      await widget.save(draft);
+      await BastionSettingsVerifier.save<T>(
+        node: node, currentNode: () => widget.radio.localNodeNum,
+        original: original, requested: draft,
+        write: () => widget.save(draft), waitForRadio: widget.radio.waitForSettingsRadio,
+        read: widget.load,
+      );
+      if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('${widget.title} saved to radio.')),
+        SnackBar(content: Text('${widget.title} saved and verified from radio.')),
       );
       navigator.pop();
     } catch (error) {
       if (!mounted) return;
-      setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Save failed: $error')));
+      setState(() { _saving = false; _saveProblem = 'Save not verified: $error\nThe radio may have applied the change. Reload to inspect its current value; nothing will be resent automatically.'; });
     }
   }
 
@@ -266,7 +289,7 @@ class _AdminEditorState<T extends GeneratedMessage>
         title: Text(widget.title),
         actions: [
           TextButton(
-            onPressed: dirty && error == null && !_saving ? _save : null,
+            onPressed: dirty && error == null && !_saving && !_saveAttempted ? _save : null,
             child: _saving
                 ? const SizedBox.square(
                     dimension: 18,
@@ -299,6 +322,10 @@ class _AdminEditorState<T extends GeneratedMessage>
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              if (_saving) const ListTile(title: Text('Waiting for reconnect and a fresh settings read…')),
+              if (_saveProblem != null) Semantics(liveRegion: true, child: Text(_saveProblem!)),
+              if (_saveAttempted && !_saving || _saveProblem != null && !_saving)
+                TextButton(onPressed: _reload, child: const Text('Reload from radio')),
               ...widget.fields(draft, () => setState(() {})),
               if (error != null)
                 Padding(
@@ -390,6 +417,7 @@ class _OwnerEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<User>(
+    radio: radio,
     title: 'Owner',
     load: radio.readOwner,
     save: radio.writeOwner,
@@ -426,6 +454,7 @@ class _LoraEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<Config_LoRaConfig>(
+    radio: radio,
     title: 'LoRa',
     load: () async =>
         (await radio.readConfig(AdminMessage_ConfigType.LORA_CONFIG)).lora,
@@ -595,6 +624,7 @@ class _DeviceEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<Config_DeviceConfig>(
+    radio: radio,
     title: 'Device',
     load: () async =>
         (await radio.readConfig(AdminMessage_ConfigType.DEVICE_CONFIG)).device,
@@ -637,6 +667,7 @@ class _PositionEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<Config_PositionConfig>(
+    radio: radio,
     title: 'Position',
     load: () async =>
         (await radio.readConfig(AdminMessage_ConfigType.POSITION_CONFIG))
@@ -821,6 +852,7 @@ class _ChannelEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<Channel>(
+    radio: radio,
     title: 'Channel $index',
     load: () => radio.readChannel(index),
     save: radio.writeChannel,
@@ -921,12 +953,14 @@ String _sectionName(ProtobufEnum type) => switch (type.name) {
 /// in the same oneof.
 class _OneofEditor extends StatefulWidget {
   const _OneofEditor({
+    required this.radio,
     required this.title,
     required this.load,
     required this.save,
     required this.empty,
   });
 
+  final MeshtasticRadioCoordinator radio;
   final String title;
   final Future<GeneratedMessage> Function() load;
   final Future<void> Function(GeneratedMessage wrapped) save;
@@ -951,6 +985,7 @@ class _OneofEditorState extends State<_OneofEditor> {
 
   @override
   Widget build(BuildContext context) => _AdminEditor<GeneratedMessage>(
+    radio: widget.radio,
     title: widget.title,
     load: () async {
       final wrapped = await widget.load();

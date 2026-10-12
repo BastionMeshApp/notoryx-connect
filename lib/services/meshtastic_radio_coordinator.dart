@@ -696,13 +696,16 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   }
 
   @override
-  Future<void> waitForBackupRadio(int nodeNum) async {
+  Future<void> waitForBackupRadio(int nodeNum) => waitForSettingsRadio(nodeNum);
+
+  /// Waits for the same local radio before a fresh settings read.
+  Future<void> waitForSettingsRadio(int nodeNum) async {
     // Allow a commit-triggered reboot to start before accepting a ready link.
     await Future<void>.delayed(const Duration(seconds: 3));
     final deadline = DateTime.now().add(const Duration(seconds: 90));
     while (DateTime.now().isBefore(deadline)) {
       if (_localNodeNum != null && _localNodeNum != nodeNum) {
-        throw StateError('Connected radio changed during restore.');
+        throw StateError('Connected radio changed while verifying settings.');
       }
       if (canAdminister && _localNodeNum == nodeNum) return;
       await Future<void>.delayed(const Duration(milliseconds: 500));

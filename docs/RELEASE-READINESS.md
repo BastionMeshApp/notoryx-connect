@@ -20,8 +20,9 @@ The checks covered settings/presets/channels, themes/large text, incident persis
 check-in messaging, coverage/CSV/disconnect stop, and bot quiet hours/limits.
 This is owner-reported hardware evidence; it is not a pass for a newly signed,
 obfuscated artifact or for a second radio. Main PR #49 passed 16 checks and 164 tests.
-The generic main editor still reports success after ACK without automatic readback;
-backup restore performs its own readback verification.
+The next 0.1.3+4 candidate adds fresh same-radio readback for generic editor saves;
+its new save/reconnect behavior still needs a physical test. Bulk channel-link imports
+retain their separate transaction flow. Backup restore performs its own readback verification.
 
 ## Exact candidate acceptance gate
 - Record commit, APK checksum, signing certificate, Android version, radio model/firmware.
