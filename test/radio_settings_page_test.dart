@@ -22,7 +22,7 @@ class SaveVerificationRadio extends MeshtasticRadioCoordinator {
   @override int? get localNodeNum => 42;
   @override Future<User> readOwner() async { reads++; return owner.deepCopy(); }
   @override Future<void> writeOwner(User value) async { writes++; if (apply) owner = value.deepCopy(); }
-  @override Future<void> waitForBackupRadio(int node) async {}
+  @override Future<void> waitForSettingsRadio(int node) async {}
 }
 
 void main() {

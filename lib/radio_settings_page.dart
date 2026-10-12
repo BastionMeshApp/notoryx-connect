@@ -213,8 +213,8 @@ class _AdminEditorState<T extends GeneratedMessage>
       final node = widget.radio.localNodeNum;
       final value = await widget.load();
       if (widget.radio.localNodeNum != node) throw StateError('Connected radio changed while loading. Retry the read.');
-      _loadedNode = node;
       if (!mounted) return;
+      _loadedNode = node;
       setState(() {
         _original = value;
         _draft = value.deepCopy();
@@ -265,7 +265,7 @@ class _AdminEditorState<T extends GeneratedMessage>
       await BastionSettingsVerifier.save<T>(
         node: node, currentNode: () => widget.radio.localNodeNum,
         original: original, requested: draft,
-        write: () => widget.save(draft), waitForRadio: widget.radio.waitForBackupRadio,
+        write: () => widget.save(draft), waitForRadio: widget.radio.waitForSettingsRadio,
         read: widget.load,
       );
       if (!mounted) return;
