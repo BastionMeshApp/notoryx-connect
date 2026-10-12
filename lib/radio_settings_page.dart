@@ -262,12 +262,14 @@ class _AdminEditorState<T extends GeneratedMessage>
       setState(() => _saveProblem = 'Radio identity changed or is unavailable. Reload before saving.');
       return;
     }
+    FocusScope.of(context).unfocus();
+    final submitted = draft.deepCopy();
     setState(() { _saving = true; _saveAttempted = true; _saveProblem = null; });
     try {
       await BastionSettingsVerifier.save<T>(
         node: node, currentNode: () => widget.radio.localNodeNum,
-        original: original, requested: draft,
-        write: () => widget.save(draft), waitForRadio: widget.radio.waitForSettingsRadio,
+        original: original, requested: submitted,
+        write: () => widget.save(submitted), waitForRadio: widget.radio.waitForSettingsRadio,
         read: widget.load,
       );
       if (!mounted) return;
