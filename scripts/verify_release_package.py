@@ -39,8 +39,10 @@ def verify(decoded, signature, policy, version):
  if decoded.get('application',{}).get('debuggable',False): raise ValueError('Release APK is debuggable')
  permissions=[p['name'] for p in decoded['permissions']]
  if len(set(permissions)) != len(permissions) or sorted(permissions) != sorted(policy['permissions']): raise ValueError('Merged release permissions differ from policy')
- fingerprints=re.findall(r'Signer #\d+ certificate SHA-256 digest:\s*([0-9a-fA-F:]+)',signature)
- if len(fingerprints)!=1 or fingerprints[0].replace(':','').lower()!=policy['certificateSha256'].lower(): raise ValueError('Release signing certificate differs from policy')
+ fingerprints=re.findall(r'^(?:Signer #\d+|V\d(?:\.\d+)? Signer:) certificate SHA-256 digest: *([0-9a-fA-F:]+)$',signature,re.M)
+ fingerprints={f.replace(':','').lower() for f in fingerprints}
+ signer_count=re.search(r'^Number of signers: *1$',signature,re.M)
+ if not signer_count or fingerprints!={policy['certificateSha256'].lower()}: raise ValueError('Release signing certificate differs from policy')
 
 if __name__=='__main__':
  if len(sys.argv)!=3: raise SystemExit('Usage: verify_release_package.py APK APKSIGNER_SIGNATURE_REPORT')
