@@ -26,7 +26,10 @@ abstract final class BastionSettingsVerifier {
       final before = original.getField(f.tagNumber);
       final wanted = requested.getField(f.tagNumber);
       final actual = observed.getField(f.tagNumber);
-      if (equivalent(before, wanted)) continue;
+      final replacingUnknown = original.unknownFields.hasField(f.tagNumber) && requested.hasField(f.tagNumber);
+      if (equivalent(before, wanted) && !replacingUnknown) continue;
+      // A generated getter may return zero when the wire carried an unknown enum.
+      if (observed.unknownFields.hasField(f.tagNumber)) return false;
       if (wanted is GeneratedMessage) {
         if (before != null && before is! GeneratedMessage || actual != null && actual is! GeneratedMessage) return false;
         if (!matchesChanges(before as GeneratedMessage? ?? wanted.createEmptyInstance(), wanted,

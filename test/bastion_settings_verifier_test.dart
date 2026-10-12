@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:fixnum/fixnum.dart';
 import 'package:bastion/services/bastion_settings_verifier.dart';
 import 'package:bastion/generated/meshtastic/config.pb.dart';
 import 'package:bastion/generated/meshtastic/channel.pb.dart';
@@ -12,6 +13,12 @@ void main() {
     expect(BastionSettingsVerifier.matchesChanges(before, wanted, actual), isTrue);
     actual.txEnabled = true;
     expect(BastionSettingsVerifier.matchesChanges(before, wanted, actual), isFalse);
+  });
+  test('unknown preset wire values cannot masquerade as a confirmed default', () {
+    final before = Config_LoRaConfig()..unknownFields.mergeVarintField(2, Int64(999));
+    final wanted = before.deepCopy()..modemPreset = Config_LoRaConfig_ModemPreset.LONG_FAST;
+    expect(BastionSettingsVerifier.matchesChanges(before, wanted, before), isFalse);
+    expect(BastionSettingsVerifier.matchesChanges(before, wanted, Config_LoRaConfig()), isTrue);
   });
   test('only edited fields are checked; unrelated firmware normalization is allowed', () {
     final before = Config_LoRaConfig(hopLimit: 3, bandwidth: 250);
