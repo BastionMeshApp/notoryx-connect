@@ -92,7 +92,7 @@ class RadioSettingsPage extends StatelessWidget {
                 context,
                 Icons.tune,
                 _sectionName(type),
-                'Available firmware settings',
+                'Read settings from the radio',
                 () => _OneofEditor(
                   title: _sectionName(type),
                   load: () async => await radio.readConfig(type),

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bastion/generated/meshtastic/config.pb.dart';
+import 'package:bastion/generated/meshtastic/channel.pb.dart';
 import 'package:bastion/services/bastion_radio_config_codec.dart';
 
 void main() {
@@ -16,6 +17,24 @@ void main() {
     expect(BastionRadioConfigCodec.loraSummary(config),
         'Region: US • Preset: Long Fast • Hop limit: 7');
     expect(BastionRadioConfigCodec.loraSummary(Uint8List(0)), isNull);
+  });
+
+  test('unknown enum values do not masquerade as known defaults', () {
+    final bytes = Uint8List.fromList([0x32, 0x06, 0x08, 0x01, 0x10, 0x63, 0x38, 0x63]);
+    expect(BastionRadioConfigCodec.loraSummary(bytes),
+        'Region: Unknown (99) • Preset: Unknown (99) • Hop limit: 0');
+  });
+
+  test('channel summaries are unique, ordered and replace stale rows', () {
+    final zero = Uint8List.fromList([0x12, 0x00, 0x18, 0x01]);
+    final first = Channel(index: 2, role: Channel_Role.SECONDARY,
+        settings: ChannelSettings(name: 'Before'));
+    final latest = Channel(index: 2, role: Channel_Role.DISABLED,
+        settings: ChannelSettings(name: 'After'));
+    expect(BastionRadioConfigCodec.channelSummaries([
+      first.writeToBuffer(), zero, zero, latest.writeToBuffer(),
+      Uint8List.fromList([0x12, 0x05, 0x01]),
+    ]), ['Channel 0 • Primary • (default)', 'Channel 2 • Disabled • After']);
   });
 
   test('manual modem mode does not claim a default preset is active', () {

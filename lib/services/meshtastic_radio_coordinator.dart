@@ -241,19 +241,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     return List.unmodifiable([if (latest != null) latest]);
   }
 
-  List<String> get channelSettings {
-    final bySlot = <int, String>{};
-    for (final payload in _channelSnapshots) {
-      try {
-        final slot = BastionRadioConfigCodec.channelMetadata(payload).index;
-        bySlot[slot] = BastionRadioConfigCodec.channelSummary(payload);
-      } on FormatException {
-        // Ignore malformed channel frames.
-      }
-    }
-    final slots = bySlot.keys.toList()..sort();
-    return List.unmodifiable(slots.map((slot) => bySlot[slot]!));
-  }
+  List<String> get channelSettings =>
+      BastionRadioConfigCodec.channelSummaries(_channelSnapshots);
 
   /// Latest valid metadata for each channel slot, without exposing PSKs.
   List<({int index, int role, String name})> get channelMetadata {
@@ -623,10 +612,33 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
 
   Future<User> readOwner() => _requireAdmin().getOwner();
 
-  Future<Config> readConfig(AdminMessage_ConfigType type) =>
-      _requireAdmin().getConfig(type);
+  Future<Config> readConfig(AdminMessage_ConfigType type) async {
+    final admin = _requireAdmin();
+    final config = await admin.getConfig(type);
+    if (_admin == admin) {
+      _radioConfigSnapshots.removeWhere((bytes) {
+        try { return Config.fromBuffer(bytes).whichPayloadVariant() == config.whichPayloadVariant(); }
+        on InvalidProtocolBufferException { return false; }
+      });
+      _radioConfigSnapshots.add(config.writeToBuffer());
+      notifyListeners();
+    }
+    return config;
+  }
 
-  Future<Channel> readChannel(int index) => _requireAdmin().getChannel(index);
+  Future<Channel> readChannel(int index) async {
+    final admin = _requireAdmin();
+    final channel = await admin.getChannel(index);
+    if (_admin == admin) {
+      _channelSnapshots.removeWhere((bytes) {
+        try { return BastionRadioConfigCodec.channelMetadata(bytes).index == index; }
+        on FormatException { return false; }
+      });
+      _channelSnapshots.add(channel.writeToBuffer());
+      notifyListeners();
+    }
+    return channel;
+  }
 
   Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) =>
       _requireAdmin().getModuleConfig(type);

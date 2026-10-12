@@ -53,10 +53,16 @@ abstract final class BastionRadioConfigCodec {
       final message = Config.fromBuffer(config);
       if (!message.hasLora()) return null;
       final lora = message.lora;
+      final values = fields(lora.writeToBuffer());
+      final regionValue = values[7] as int? ?? lora.region.value;
+      final presetValue = values[2] as int? ?? lora.modemPreset.value;
+      final region = Config_LoRaConfig_RegionCode.valueOf(regionValue)?.name
+          ?? 'Unknown ($regionValue)';
+      final preset = Config_LoRaConfig_ModemPreset.valueOf(presetValue)?.name;
       final modem = lora.usePreset
-          ? 'Preset: ${_enumLabel(lora.modemPreset.name)}'
+          ? 'Preset: ${preset == null ? 'Unknown ($presetValue)' : _enumLabel(preset)}'
           : 'Manual modem: ${lora.bandwidth} kHz • SF ${lora.spreadFactor} • Coding rate: ${lora.codingRate}';
-      return 'Region: ${lora.region.name} • $modem • Hop limit: ${lora.hopLimit}';
+      return 'Region: $region • $modem • Hop limit: ${lora.hopLimit}';
     } on InvalidProtocolBufferException {
       throw const FormatException('Invalid LoRa configuration');
     }
@@ -85,6 +91,20 @@ abstract final class BastionRadioConfigCodec {
       1 => 'Primary', 2 => 'Secondary', _ => 'Disabled',
     };
     return 'Channel ${metadata.index} • $role • ${metadata.name.isEmpty ? '(default)' : metadata.name}';
+  }
+
+  /// Latest valid summary per channel slot, ordered by the protocol index.
+  static List<String> channelSummaries(Iterable<Uint8List> snapshots) {
+    final bySlot = <int, String>{};
+    for (final payload in snapshots) {
+      try {
+        bySlot[channelMetadata(payload).index] = channelSummary(payload);
+      } on FormatException {
+        // A bad frame must not replace the latest valid settings.
+      }
+    }
+    final slots = bySlot.keys.toList()..sort();
+    return List.unmodifiable(slots.map((slot) => bySlot[slot]!));
   }
 
   static String _enumLabel(String name) => name.split('_')

@@ -40,7 +40,9 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: RadioSettingsPage(radio: radio)));
     for (final title in ['Device UI', 'MQTT', 'External notifications',
         'Canned messages', 'Remote hardware', 'TAK', 'Mesh Beacon']) {
-      await tester.scrollUntilVisible(find.text(title), 300, scrollable: find.byType(Scrollable).first);
+      tester.state<ScrollableState>(find.byType(Scrollable).first).position.jumpTo(0);
+      await tester.pump();
+      await tester.scrollUntilVisible(find.text(title), 150, scrollable: find.byType(Scrollable).first);
       expect(find.text(title), findsOneWidget);
     }
   });
