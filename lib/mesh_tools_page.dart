@@ -59,7 +59,7 @@ class _RangeTestTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'Set one radio as the Range Test sender (Settings → Change radio settings → '
           'Rangetest: enabled, sender interval). Carry this radio away from it; each '
           'packet heard appears here with signal and distance. Gaps in the sequence '

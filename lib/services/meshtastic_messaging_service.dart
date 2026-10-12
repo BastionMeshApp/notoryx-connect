@@ -10,6 +10,7 @@ import '../generated/meshtastic/mesh.pb.dart' as pb;
 import '../generated/meshtastic/portnums.pbenum.dart';
 import '../generated/meshtastic/storeforward.pb.dart';
 import 'bastion_chat_message.dart';
+import 'bastion_bot_guard.dart';
 import 'bastion_message_archive.dart';
 import 'meshtastic_connection_controller.dart';
 import 'meshtastic_phoneapi_codec.dart';
@@ -37,7 +38,7 @@ class MeshtasticMessagingService {
   final List<BastionChatMessage> _messages = [];
   final Set<String> _seen = {};
   final List<String> _seenOrder = [];
-  final Map<int, DateTime> _lastBotReply = {};
+
   StreamSubscription? _subscription;
   bool _flushing = false;
   bool _started = false;
@@ -260,12 +261,10 @@ class MeshtasticMessagingService {
     final isCommand = lower == '!help' || lower == '!status';
     if (!directToUs && !isCommand) return;
 
-    final now = DateTime.now();
-    final last = _lastBotReply[message.from];
-    if (last != null && now.difference(last) < const Duration(seconds: 30)) {
-      return;
-    }
-    _lastBotReply[message.from] = now;
+    if (!await BastionBotGuard.instance.reserve(sender: message.from,
+        receivedChannel: message.channel, rxTime: message.rxTime, now: DateTime.now())) return;
+    // A permission/persistence wait may outlive the connected session.
+    if (!_botEnabled || !connection.isReady || localNodeNum != ownNode) return;
 
     final response = switch (lower) {
       '!help' => 'Bastion: commands !help !status',
