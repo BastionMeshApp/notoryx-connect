@@ -33,6 +33,15 @@ class TemplateRadio extends MeshtasticRadioCoordinator {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final root = Platform.environment['FLUTTER_ROOT'];
+    if (root == null) return;
+    for (final font in {'Roboto': 'Roboto-Regular.ttf', 'MaterialIcons': 'MaterialIcons-Regular.otf'}.entries) {
+      final file = File('$root/bin/cache/artifacts/material_fonts/${font.value}');
+      final loader = FontLoader(font.key)..addFont(Future.value(ByteData.sublistView(await file.readAsBytes())));
+      await loader.load();
+    }
+  });
   setUp(() {
     SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
     final cache = Directory.systemTemp.createTempSync('bastion-widget-map-');
