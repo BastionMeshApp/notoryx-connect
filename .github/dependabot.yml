@@ -6,7 +6,7 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
-    target-branch: feature/bastion-v1-integration
+    target-branch: main
     labels:
       - dependencies
   - package-ecosystem: github-actions
@@ -15,6 +15,6 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
-    target-branch: feature/bastion-v1-integration
+    target-branch: main
     labels:
       - dependencies
