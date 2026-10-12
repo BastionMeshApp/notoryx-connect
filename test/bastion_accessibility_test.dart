@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:bastion/main.dart';
 import 'package:bastion/field_tools_page.dart';
 import 'package:bastion/services/bastion_preferences.dart';
@@ -31,7 +32,13 @@ class TemplateRadio extends MeshtasticRadioCoordinator {
 }
 
 void main() {
-  setUp(() => SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty());
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty();
+    final cache = Directory.systemTemp.createTempSync('bastion-widget-map-');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'), (_) async => cache.path);
+  });
   for (final mode in [ThemeMode.light, ThemeMode.dark]) {
     testWidgets('shell fits narrow screen with large text in ${mode.name} theme', (tester) async {
       tester.view.physicalSize = const Size(390, 844); tester.view.devicePixelRatio = 1;
@@ -63,19 +70,23 @@ void main() {
     await tester.scrollUntilVisible(find.text('Review message'), 200, scrollable: find.byType(Scrollable).first);
     expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Review message')).onPressed, isNull);
     expect(tester.takeException(), isNull);
-  });  testWidgets('template send needs explicit confirmation and cannot queue after disconnect', (tester) async {
+  });
+
+  testWidgets('template send needs explicit confirmation and cannot queue after disconnect', (tester) async {
     final radio = TemplateRadio(); addTearDown(radio.dispose);
     await tester.pumpWidget(MaterialApp(home: FieldToolsPage(radio: radio)));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Emergency & check-in templates'), 300, scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Emergency & check-in templates')); await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Review message'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.ensureVisible(find.text('Review message')); await tester.pumpAndSettle();
     await tester.tap(find.text('Review message')); await tester.pumpAndSettle();
     expect(radio.sent, isEmpty);
     radio.ready = false;
     await tester.tap(find.text('Send message')); await tester.pumpAndSettle();
     expect(radio.sent, isEmpty);
     radio.ready = true; radio.notifyListeners(); await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Review message')); await tester.pumpAndSettle();
     await tester.tap(find.text('Review message')); await tester.pumpAndSettle();
     await tester.tap(find.text('Send message')); await tester.pumpAndSettle();
     expect(radio.sent, hasLength(1)); expect(radio.sent.single, startsWith('0:ASSISTANCE REQUESTED'));
