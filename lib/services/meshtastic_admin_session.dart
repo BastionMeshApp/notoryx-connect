@@ -11,6 +11,13 @@ import '../generated/meshtastic/mesh.pb.dart';
 import '../generated/meshtastic/module_config.pb.dart';
 import '../generated/meshtastic/portnums.pbenum.dart';
 
+class MeshtasticSettingsUnavailable implements Exception {
+  const MeshtasticSettingsUnavailable(this.section);
+  final String section;
+  @override
+  String toString() => '$section settings are unavailable through this radio’s firmware API.';
+}
+
 class MeshtasticAdminException implements Exception {
   MeshtasticAdminException(this.message);
 
@@ -62,27 +69,46 @@ class MeshtasticAdminSession {
       _clock().difference(_passkeyReceivedAt!) < passkeyLifetime;
 
   Future<User> getOwner() async =>
-      (await _request(AdminMessage(getOwnerRequest: true), 'owner'))
-          .getOwnerResponse;
+      (await _request(AdminMessage(getOwnerRequest: true), 'owner',
+          expected: AdminMessage_PayloadVariant.getOwnerResponse)).getOwnerResponse;
 
-  Future<Config> getConfig(AdminMessage_ConfigType type) async =>
-      (await _request(AdminMessage(getConfigRequest: type), type.name))
-          .getConfigResponse;
+  Future<Config> getConfig(AdminMessage_ConfigType type) async {
+    final reply = await _request(AdminMessage(getConfigRequest: type), type.name,
+        expected: AdminMessage_PayloadVariant.getConfigResponse);
+    final config = reply.getConfigResponse;
+    if (config.whichPayloadVariant() == Config_PayloadVariant.notSet) {
+      throw MeshtasticSettingsUnavailable(type.name);
+    }
+    if (config.whichPayloadVariant().index != type.value) {
+      throw MeshtasticAdminException('Radio returned a different configuration section.');
+    }
+    return config;
+  }
 
-  Future<ModuleConfig> getModuleConfig(
-    AdminMessage_ModuleConfigType type,
-  ) async =>
-      (await _request(AdminMessage(getModuleConfigRequest: type), type.name))
-          .getModuleConfigResponse;
+  Future<ModuleConfig> getModuleConfig(AdminMessage_ModuleConfigType type) async {
+    final reply = await _request(AdminMessage(getModuleConfigRequest: type), type.name,
+        expected: AdminMessage_PayloadVariant.getModuleConfigResponse);
+    final config = reply.getModuleConfigResponse;
+    if (config.whichPayloadVariant() == ModuleConfig_PayloadVariant.notSet) {
+      throw MeshtasticSettingsUnavailable(type.name);
+    }
+    // Enum order follows the pinned protocol schema, including Ambient Lighting
+    // before Detection Sensor (their oneof tags have the opposite order).
+    if (config.whichPayloadVariant().index != type.value) {
+      throw MeshtasticAdminException('Radio returned a different module section.');
+    }
+    return config;
+  }
 
   /// [index] is the 0-based channel slot; the protocol sends index + 1.
   Future<Channel> getChannel(int index) async {
     if (index < 0 || index > 7) throw RangeError.range(index, 0, 7, 'index');
-    return (await _request(
-      AdminMessage(getChannelRequest: index + 1),
-      'channel $index',
-    ))
-        .getChannelResponse;
+    final reply = await _request(AdminMessage(getChannelRequest: index + 1),
+        'channel $index', expected: AdminMessage_PayloadVariant.getChannelResponse);
+    if (reply.getChannelResponse.index != index) {
+      throw MeshtasticAdminException('Radio returned a different channel slot.');
+    }
+    return reply.getChannelResponse;
   }
 
   Future<void> setOwner(User owner) =>
@@ -119,8 +145,15 @@ class MeshtasticAdminSession {
     await _exchange(message, what, expectsResponse: false);
   }
 
-  Future<AdminMessage> _request(AdminMessage message, String what) async =>
-      (await _exchange(message, what, expectsResponse: true))!;
+  Future<AdminMessage> _request(AdminMessage message, String what, {
+    required AdminMessage_PayloadVariant expected,
+  }) async {
+    final reply = (await _exchange(message, what, expectsResponse: true))!;
+    if (reply.whichPayloadVariant() != expected) {
+      throw MeshtasticAdminException('Radio returned an unexpected response for $what.');
+    }
+    return reply;
+  }
 
   Future<AdminMessage?> _exchange(
     AdminMessage message,
@@ -163,7 +196,9 @@ class MeshtasticAdminSession {
       return;
     }
     if (!envelope.hasPacket() || !envelope.packet.hasDecoded()) return;
-    final data = envelope.packet.decoded;
+    final packet = envelope.packet;
+    if (packet.from != localNodeNum) return;
+    final data = packet.decoded;
     final pending = _pending[data.requestId];
 
     if (data.portnum == PortNum.ADMIN_APP) {

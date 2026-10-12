@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:bastion/generated/meshtastic/admin.pb.dart';
 import 'package:bastion/generated/meshtastic/config.pb.dart';
+import 'package:bastion/generated/meshtastic/channel.pb.dart';
+import 'package:bastion/generated/meshtastic/module_config.pb.dart';
 import 'package:bastion/generated/meshtastic/mesh.pb.dart';
 import 'package:bastion/generated/meshtastic/portnums.pbenum.dart';
 import 'package:bastion/services/meshtastic_admin_session.dart';
@@ -24,6 +26,8 @@ class FakeAdminRadio {
     lora: Config_LoRaConfig(region: Config_LoRaConfig_RegionCode.US, hopLimit: 3),
   );
   bool silent = false;
+  AdminMessage? readReply;
+  int sender = localNode;
 
   Future<void> send(Uint8List bytes) async {
     final packet = ToRadio.fromBuffer(bytes).packet;
@@ -36,6 +40,10 @@ class FakeAdminRadio {
   }
 
   void _answer(int id, AdminMessage admin) {
+    if (readReply != null) {
+      _reply(id, readReply!);
+      return;
+    }
     switch (admin.whichPayloadVariant()) {
       case AdminMessage_PayloadVariant.getOwnerRequest:
         _reply(id, AdminMessage(
@@ -69,7 +77,7 @@ class FakeAdminRadio {
       ));
 
   void _emit(Data data) => incoming.add(FromRadio(
-        packet: MeshPacket(from: localNode, to: localNode, decoded: data),
+        packet: MeshPacket(from: sender, to: localNode, decoded: data),
       ).writeToBuffer());
 
   static bool _listEquals(List<int> a, List<int> b) =>
@@ -92,6 +100,67 @@ void main() {
     expect(config.lora.region, Config_LoRaConfig_RegionCode.US);
     expect(admin.hasFreshPasskey, isTrue);
     await admin.dispose();
+  });
+
+  for (final type in [AdminMessage_ModuleConfigType.TAK_CONFIG,
+      AdminMessage_ModuleConfigType.MESHBEACON_CONFIG]) {
+    test('empty ${type.name} reply is unavailable, not a timeout', () async {
+      final radio = FakeAdminRadio()..readReply = AdminMessage(
+        getModuleConfigResponse: ModuleConfig());
+      addTearDown(radio.incoming.close);
+      final admin = sessionFor(radio);
+      addTearDown(admin.dispose);
+      await expectLater(admin.getModuleConfig(type),
+          throwsA(isA<MeshtasticSettingsUnavailable>()));
+    });
+  }
+
+  test('matching request ID cannot substitute a different response kind', () async {
+    final radio = FakeAdminRadio()..readReply = AdminMessage(getOwnerResponse: User());
+    addTearDown(radio.incoming.close);
+    final admin = sessionFor(radio);
+    addTearDown(admin.dispose);
+    await expectLater(admin.getConfig(AdminMessage_ConfigType.LORA_CONFIG),
+        throwsA(isA<MeshtasticAdminException>()));
+  });
+
+  test('wrong configuration section fails before a draft can be edited', () async {
+    final radio = FakeAdminRadio()..readReply = AdminMessage(
+        getConfigResponse: Config(device: Config_DeviceConfig()));
+    addTearDown(radio.incoming.close);
+    final admin = sessionFor(radio);
+    addTearDown(admin.dispose);
+    await expectLater(admin.getConfig(AdminMessage_ConfigType.LORA_CONFIG),
+        throwsA(isA<MeshtasticAdminException>()));
+  });
+
+  test('wrong module section fails instead of opening another editor', () async {
+    final radio = FakeAdminRadio()..readReply = AdminMessage(
+        getModuleConfigResponse: ModuleConfig(mqtt: ModuleConfig_MQTTConfig()));
+    addTearDown(radio.incoming.close);
+    final admin = sessionFor(radio);
+    addTearDown(admin.dispose);
+    await expectLater(admin.getModuleConfig(AdminMessage_ModuleConfigType.TAK_CONFIG),
+        throwsA(isA<MeshtasticAdminException>()));
+  });
+
+  test('channel response preserves slot zero and checks the requested slot', () async {
+    final radio = FakeAdminRadio()..readReply = AdminMessage(
+        getChannelResponse: Channel(role: Channel_Role.PRIMARY));
+    addTearDown(radio.incoming.close);
+    final admin = sessionFor(radio);
+    addTearDown(admin.dispose);
+    expect((await admin.getChannel(0)).index, 0);
+    await expectLater(admin.getChannel(1), throwsA(isA<MeshtasticAdminException>()));
+  });
+
+  test('a different sender cannot complete a local settings read', () async {
+    final radio = FakeAdminRadio()..sender = 0x9999;
+    addTearDown(radio.incoming.close);
+    final admin = sessionFor(radio, timeout: const Duration(milliseconds: 50));
+    addTearDown(admin.dispose);
+    await expectLater(admin.getOwner(), throwsA(isA<MeshtasticAdminException>()));
+    expect(admin.hasFreshPasskey, isFalse);
   });
 
   test('write fetches a passkey first and attaches it', () async {

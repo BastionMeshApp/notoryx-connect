@@ -229,29 +229,20 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   Map<int, BastionDeviceTelemetry> get deviceTelemetry =>
       Map.unmodifiable(_deviceTelemetry);
   List<String> get loraSettings {
-    final result = <String>[];
+    String? latest;
     for (final payload in _radioConfigSnapshots) {
       try {
         final summary = BastionRadioConfigCodec.loraSummary(payload);
-        if (summary != null) result.add(summary);
+        if (summary != null) latest = summary;
       } on FormatException {
         // Ignore malformed configuration frames.
       }
     }
-    return List.unmodifiable(result);
+    return List.unmodifiable([if (latest != null) latest]);
   }
 
-  List<String> get channelSettings {
-    final result = <String>[];
-    for (final payload in _channelSnapshots) {
-      try {
-        result.add(BastionRadioConfigCodec.channelSummary(payload));
-      } on FormatException {
-        // Ignore malformed channel frames.
-      }
-    }
-    return List.unmodifiable(result);
-  }
+  List<String> get channelSettings =>
+      BastionRadioConfigCodec.channelSummaries(_channelSnapshots);
 
   /// Latest valid metadata for each channel slot, without exposing PSKs.
   List<({int index, int role, String name})> get channelMetadata {
@@ -621,10 +612,33 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
 
   Future<User> readOwner() => _requireAdmin().getOwner();
 
-  Future<Config> readConfig(AdminMessage_ConfigType type) =>
-      _requireAdmin().getConfig(type);
+  Future<Config> readConfig(AdminMessage_ConfigType type) async {
+    final admin = _requireAdmin();
+    final config = await admin.getConfig(type);
+    if (_admin == admin) {
+      _radioConfigSnapshots.removeWhere((bytes) {
+        try { return Config.fromBuffer(bytes).whichPayloadVariant() == config.whichPayloadVariant(); }
+        on InvalidProtocolBufferException { return false; }
+      });
+      _radioConfigSnapshots.add(config.writeToBuffer());
+      notifyListeners();
+    }
+    return config;
+  }
 
-  Future<Channel> readChannel(int index) => _requireAdmin().getChannel(index);
+  Future<Channel> readChannel(int index) async {
+    final admin = _requireAdmin();
+    final channel = await admin.getChannel(index);
+    if (_admin == admin) {
+      _channelSnapshots.removeWhere((bytes) {
+        try { return BastionRadioConfigCodec.channelMetadata(bytes).index == index; }
+        on FormatException { return false; }
+      });
+      _channelSnapshots.add(channel.writeToBuffer());
+      notifyListeners();
+    }
+    return channel;
+  }
 
   Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) =>
       _requireAdmin().getModuleConfig(type);
