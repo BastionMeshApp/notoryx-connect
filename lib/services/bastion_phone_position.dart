@@ -14,12 +14,14 @@ class PhoneFix {
     required this.longitude,
     required this.time,
     this.altitudeMeters,
+    this.accuracyMeters,
   });
 
   final double latitude;
   final double longitude;
   final DateTime time;
   final double? altitudeMeters;
+  final double? accuracyMeters;
 }
 
 /// Phone location, behind an interface so sharing logic is testable.
@@ -58,6 +60,7 @@ class GeolocatorLocationSource implements PhoneLocationSource {
             latitude: p.latitude,
             longitude: p.longitude,
             altitudeMeters: p.altitude,
+            accuracyMeters: p.accuracy,
             time: p.timestamp,
           ));
 }

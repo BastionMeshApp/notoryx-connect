@@ -472,7 +472,7 @@ class _WaypointDialogState extends State<_WaypointDialog> {
                 value: _locked,
                 onChanged: (v) => setState(() => _locked = v),
               ),
-            const Text('Shared with everyone on channel 0.', style: TextStyle(color: Colors.white60)),
+            Text('Shared with everyone on channel 0.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       ),

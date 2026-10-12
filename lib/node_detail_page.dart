@@ -291,9 +291,9 @@ class _NodeDetailPageState extends State<NodeDetailPage> {
               ),
               const SizedBox(height: 8),
               if (recent.isEmpty)
-                const Text(
+                Text(
                   'No direct messages with this node yet.',
-                  style: TextStyle(color: Colors.white60),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               for (final m in recent)
                 Align(
@@ -350,7 +350,7 @@ class _Row extends StatelessWidget {
       children: [
         SizedBox(
           width: 110,
-          child: Text(label, style: const TextStyle(color: Colors.white60)),
+          child: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ),
         Expanded(child: Text(value)),
       ],
@@ -397,10 +397,10 @@ class _NeighborCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             if (own == null && heardBy.isEmpty)
-              const Text(
+              Text(
                 'No neighbor reports yet. Nodes share these when the Neighbor Info '
                 'module is enabled (Settings → Change radio settings → Neighborinfo).',
-                style: TextStyle(color: Colors.white60),
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             if (own != null) ...[
               Text('Hears directly (${own.neighbors.length}):'),

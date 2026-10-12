@@ -19,12 +19,12 @@ class MeshToolsPage extends StatelessWidget {
             title: const Text('Mesh tools'),
             bottom: const TabBar(tabs: [Tab(text: 'Range test'), Tab(text: 'Store & forward')]),
           ),
-          body: AnimatedBuilder(
+          body: SafeArea(top: false, child: AnimatedBuilder(
             animation: radio,
             builder: (context, _) => TabBarView(
               children: [_RangeTestTab(radio: radio), _StoreForwardTab(radio: radio)],
             ),
-          ),
+          )),
         ),
       );
 }
@@ -59,12 +59,12 @@ class _RangeTestTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'Set one radio as the Range Test sender (Settings → Change radio settings → '
           'Rangetest: enabled, sender interval). Carry this radio away from it; each '
           'packet heard appears here with signal and distance. Gaps in the sequence '
           'number are lost packets.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
         Row(
@@ -117,10 +117,10 @@ class _StoreForwardTabState extends State<_StoreForwardTab> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text(
+        Text(
           'A Store & Forward router keeps recent messages and can replay the ones '
           'you missed while out of range. Replayed messages appear in Chats.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<Duration>(
@@ -133,10 +133,10 @@ class _StoreForwardTabState extends State<_StoreForwardTab> {
         if (radio.lastStoreForwardReply != null)
           Card(child: ListTile(leading: const Icon(Icons.info_outline), title: Text(radio.lastStoreForwardReply!))),
         if (routers.isEmpty)
-          const Text(
+          Text(
             'No Store & Forward router heard yet. Routers announce themselves with a '
             'heartbeat every few minutes, if heartbeats are enabled on them.',
-            style: TextStyle(color: Colors.white60),
+            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
           ),
         for (final router in routers)
           Card(

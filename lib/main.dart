@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'map_page.dart';
+import 'field_tools_page.dart';
+import 'services/bastion_field_log.dart';
+import 'services/bastion_bot_guard.dart';
+import 'services/bastion_preferences.dart';
 import 'radio_backup_page.dart';
 import 'services/bastion_message_search.dart';
 import 'mesh_tools_page.dart';
@@ -21,6 +25,9 @@ Future<void> main() async {
     yield LicenseEntryWithLineBreaks(['Meshtastic protobufs'], text);
   });
   await BastionTileCache.initialize();
+  await BastionPreferences.instance.load();
+  await BastionFieldLog.instance.load();
+  await BastionBotGuard.instance.load();
   runApp(const BastionApp());
 }
 
@@ -29,22 +36,38 @@ class BastionApp extends StatelessWidget {
   static const signal = Color(0xFFC7A24A);
   static const panel = Color(0xFF151713);
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'Bastion',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
+  static ThemeData appearance(Brightness brightness) {
+    final colors = ColorScheme.fromSeed(seedColor: signal, brightness: brightness);
+    final dark = brightness == Brightness.dark;
+    return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF0D0F0C),
-      colorScheme: ColorScheme.fromSeed(seedColor: signal, brightness: Brightness.dark),
-      appBarTheme: const AppBarTheme(backgroundColor: Color(0xFF0D0F0C)),
+      brightness: brightness,
+      colorScheme: colors,
+      scaffoldBackgroundColor: dark ? const Color(0xFF0D0F0C) : colors.surface,
+      disabledColor: colors.onSurfaceVariant,
+      filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled) ? colors.onSurfaceVariant : null),
+      )),
+      listTileTheme: ListTileThemeData(
+        textColor: colors.onSurface, iconColor: colors.onSurfaceVariant,
+      ),
+      appBarTheme: AppBarTheme(backgroundColor: dark ? const Color(0xFF0D0F0C) : colors.surface),
       cardTheme: CardThemeData(
-        color: panel,
+        color: dark ? panel : colors.surfaceContainerLow,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: BastionPreferences.instance,
+    builder: (context, _) => MaterialApp(
+      title: 'Bastion', debugShowCheckedModeBanner: false,
+      theme: appearance(Brightness.light), darkTheme: appearance(Brightness.dark),
+      themeMode: BastionPreferences.instance.theme,
+      home: const BastionShell(),
     ),
-    home: const BastionShell(),
   );
 }
 
@@ -78,17 +101,21 @@ class _BastionShellState extends State<BastionShell> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      toolbarHeight: MediaQuery.textScalerOf(context).scale(38) + 18,
+      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('BASTION', style: TextStyle(fontWeight: FontWeight.w900,
-          color: BastionApp.signal, letterSpacing: 2)),
-        Text('FIELD MESH', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
+          color: Theme.of(context).colorScheme.primary, letterSpacing: 2)),
+        const Text('FIELD MESH', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
       ]),
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: 12),
           child: AnimatedBuilder(
             animation: radio,
-            builder: (context, _) => Chip(
+            builder: (context, _) => MediaQuery.textScalerOf(context).scale(14) > 20
+                ? Tooltip(message: _connectionLabel(radio.connection.state), child: Icon(
+                    radio.isReady ? Icons.bluetooth_connected : Icons.bluetooth_disabled))
+                : Chip(
               avatar: Icon(
                 radio.isReady ? Icons.bluetooth_connected : Icons.radio_button_checked,
                 size: 16,
@@ -146,13 +173,14 @@ class _NodesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: Listenable.merge([discovery, radio]),
+    animation: Listenable.merge([discovery, radio, BastionPreferences.instance]),
     builder: (context, _) => ListView(
       padding: const EdgeInsets.all(16),
       children: [
         const _Header(icon: Icons.radar, title: 'MESH COMMAND',
           detail: 'Find a nearby radio, inspect Bluetooth signal strength, and prepare for a verified Meshtastic session.'),
         const SizedBox(height: 14),
+        if (BastionPreferences.instance.statistics)
         Row(children: [
           Expanded(child: _Stat(label: 'BLE DEVICES', value: '${discovery.results.length}')),
           const SizedBox(width: 10),
@@ -232,7 +260,7 @@ class _NodesPage extends StatelessWidget {
               )),
             )),
         ],
-        if (radio.isReady) ...[
+        if (radio.isReady && BastionPreferences.instance.meshHealth) ...[
           const SizedBox(height: 14),
           const Text('MESH HEALTH • LIVE SESSION',
             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .8)),
@@ -281,7 +309,7 @@ class _NodesPage extends StatelessWidget {
             icon: Icons.monitor_heart_outlined,
           ),
         ],
-        if (radio.nodeDex.isNotEmpty) ...[
+        if (radio.nodeDex.isNotEmpty && BastionPreferences.instance.encounters) ...[
           const SizedBox(height: 18),
           const Text('NODEDEX • SAVED ENCOUNTERS',
             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .8)),
@@ -573,9 +601,9 @@ class _ChatsPageState extends State<BastionChatsPage> {
               color: BastionApp.signal),
             title: const Text('BOT MODE',
               style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(widget.botMode
-                ? 'ACTIVE • DM auto-reply + !help / !status • 30s loop guard'
-                : 'Automatic replies are off'),
+            subtitle: Text(widget.radio.botProblem ?? (widget.botMode
+                ? 'ACTIVE • DM auto-reply + !help / !status • quiet hours + airtime limits'
+                : 'Automatic replies are off')),
             value: widget.botMode,
             onChanged: widget.onBotModeChanged,
           )),
@@ -653,6 +681,13 @@ class _ToolsPageState extends State<_ToolsPage> {
       const _Header(icon: Icons.construction, title: 'FIELD TOOLS',
         detail: 'Practical utilities you can use before and during a deployment.'),
       const SizedBox(height: 14),
+      Card(child: ListTile(
+        leading: const Icon(Icons.assignment_outlined),
+        title: const Text('Incident log, emergency templates & coverage'),
+        subtitle: const Text('Saved field records and exports'),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => FieldToolsPage(radio: widget.radio))),
+      )),
       Card(child: ExpansionTile(
         leading: const Icon(Icons.battery_charging_full, color: BastionApp.signal),
         title: const Text('BATTERY RUNTIME', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -800,6 +835,7 @@ class _SettingsPage extends StatelessWidget {
       const _Header(icon: Icons.tune, title: 'SETTINGS',
         detail: 'Field behavior, connection preferences and build information.'),
       const SizedBox(height: 14),
+      const BastionAppearanceCard(),
       AnimatedBuilder(
         animation: radio,
         builder: (context, _) => Card(child: ExpansionTile(
@@ -921,17 +957,17 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(color: BastionApp.panel,
+    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(16),
       border: Border.all(color: BastionApp.signal.withValues(alpha: .4))),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Icon(icon, color: BastionApp.signal, size: 30),
       const SizedBox(width: 14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900,
-          color: BastionApp.signal, letterSpacing: .8)),
+        Text(title, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900,
+          color: Theme.of(context).colorScheme.primary, letterSpacing: .8)),
         const SizedBox(height: 6),
-        Text(detail, style: const TextStyle(height: 1.4, color: Colors.white70)),
+        Text(detail, style: TextStyle(height: 1.4, color: Theme.of(context).colorScheme.onSurfaceVariant)),
       ])),
     ]),
   );
@@ -944,15 +980,14 @@ class _Stat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-    decoration: BoxDecoration(color: BastionApp.panel,
+    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(12)),
     child: Column(children: [
-      FittedBox(fit: BoxFit.scaleDown, child: Text(value, maxLines: 1,
-        softWrap: false, style: const TextStyle(fontWeight: FontWeight.w900,
-        fontSize: 17, color: BastionApp.signal))),
+      Text(value, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w900,
+        fontSize: 17, color: Theme.of(context).colorScheme.primary)),
       const SizedBox(height: 4),
       Text(label, textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: .6)),
+        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant, letterSpacing: .6)),
     ]),
   );
 }
@@ -966,12 +1001,12 @@ class _Notice extends StatelessWidget {
     padding: const EdgeInsets.only(top: 12),
     child: Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .04),
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12)),
       child: Row(children: [
-        Icon(icon, size: 20, color: Colors.white54), const SizedBox(width: 10),
+        Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant), const SizedBox(width: 10),
         Expanded(child: Text(text,
-          style: const TextStyle(fontSize: 12, color: Colors.white60))),
+          style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant))),
       ]),
     ),
   );
@@ -987,11 +1022,11 @@ class _EmptyState extends StatelessWidget {
     child: Padding(
       padding: const EdgeInsets.all(22),
       child: Column(children: [
-        Icon(icon, size: 38, color: Colors.white30), const SizedBox(height: 10),
+        Icon(icon, size: 38, color: Theme.of(context).colorScheme.onSurfaceVariant), const SizedBox(height: 10),
         Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         Text(detail, textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white54, height: 1.4)),
+          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, height: 1.4)),
       ]),
     ),
   );

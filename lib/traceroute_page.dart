@@ -80,10 +80,10 @@ class _TraceroutePageState extends State<TraceroutePage> {
                   label: Text(_running ? 'Tracing… up to 60 s' : 'Run traceroute'),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Firmware limits how often traceroutes can run. Each one uses '
                   'airtime on every relay, so avoid repeating them quickly.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 if (!widget.radio.canTraceroute && !_running)
                   const Padding(

@@ -44,6 +44,14 @@ class RadioSettingsPage extends StatelessWidget {
                 ),
               ),
             ),
+          Card(child: ListTile(
+            title: const Text('Settings availability'),
+            subtitle: const Text('Check reads before editing. Missing startup settings do not prove a module is unsupported. Results reset on reconnect.'),
+            trailing: radio.checkingSettings ? TextButton(
+              onPressed: radio.cancelSettingsCheck, child: const Text('Stop checking')) : const Icon(Icons.refresh),
+            onTap: radio.canAdminister && !radio.checkingSettings
+                ? radio.checkSettingsAvailability : null,
+          )),
           _entry(
             context,
             Icons.person_outline,
@@ -92,7 +100,7 @@ class RadioSettingsPage extends StatelessWidget {
                 context,
                 Icons.tune,
                 _sectionName(type),
-                'Read settings from the radio',
+                radio.availability('config:${type.value}'),
                 () => _OneofEditor(
                   title: _sectionName(type),
                   load: () async => await radio.readConfig(type),
@@ -112,7 +120,7 @@ class RadioSettingsPage extends StatelessWidget {
               context,
               Icons.extension_outlined,
               _sectionName(type),
-              'Module settings',
+              radio.availability('module:${type.value}'),
               () => _OneofEditor(
                 title: _sectionName(type),
                 load: () async => await radio.readModuleConfig(type),

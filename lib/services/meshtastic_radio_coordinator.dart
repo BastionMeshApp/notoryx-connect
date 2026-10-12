@@ -22,6 +22,8 @@ import 'bastion_background_service.dart';
 import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
 import 'bastion_phone_position.dart';
+import 'bastion_field_log.dart';
+import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
@@ -119,6 +121,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   List<BastionChatMessage> _archivedMessages = const [];
   List<PendingTextMessage> _archivedPending = const [];
   bool _busy = false;
+  bool _disposed = false;
   bool _botEnabled = false;
   String _botReply =
       'Bastion is monitoring the mesh. I will reply when available.';
@@ -129,6 +132,88 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   final List<double> _snrHistory = [];
   int _receivedTextPackets = 0;
   final Map<int, BastionDeviceTelemetry> _deviceTelemetry = {};
+  /// Evidence belongs to this connection, never to a hardware name/version.
+  final Map<String, String> settingsAvailability = {};
+  bool checkingSettings = false;
+  bool _cancelSettingsCheck = false;
+  void cancelSettingsCheck() { _cancelSettingsCheck = true; notifyListeners(); }
+
+  String availability(String key) => settingsAvailability[key] ?? 'Not checked';
+
+  Future<T> _readSection<T>(String key, Future<T> Function() read) async {
+    final admin = _admin;
+    try {
+      final value = await read();
+      if (admin == _admin) settingsAvailability[key] = 'Available';
+      return value;
+    } on MeshtasticSettingsUnavailable {
+      if (admin == _admin) settingsAvailability[key] = 'Not returned by this radio';
+      rethrow;
+    } catch (_) {
+      if (admin == _admin) settingsAvailability[key] = 'Read failed — retry';
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<void> checkSettingsAvailability() async {
+    if (checkingSettings || !canAdminister) return;
+    final admin = _admin;
+    checkingSettings = true;
+    _cancelSettingsCheck = false;
+    notifyListeners();
+    try {
+      for (final type in AdminMessage_ConfigType.values) {
+        if (_cancelSettingsCheck || admin != _admin || !canAdminister) break;
+        if (type == AdminMessage_ConfigType.SESSIONKEY_CONFIG) continue;
+        try { await readConfig(type); } catch (_) { /* Recorded by _readSection. */ }
+      }
+      for (final type in AdminMessage_ModuleConfigType.values) {
+        if (_cancelSettingsCheck || admin != _admin || !canAdminister) break;
+        try { await readModuleConfig(type); } catch (_) { /* Recorded by _readSection. */ }
+      }
+    } finally {
+      checkingSettings = false;
+      notifyListeners();
+    }
+  }
+
+  StreamSubscription<PhoneFix>? _coverageLocation;
+  PhoneFix? _coverageFix;
+  String? coverageProblem;
+  bool get recordingCoverage => BastionFieldLog.instance.recording;
+
+  Future<void> setCoverageRecording(bool enabled) async {
+    await _coverageLocation?.cancel();
+    _coverageLocation = null;
+    _coverageFix = null;
+    BastionFieldLog.instance.stop();
+    coverageProblem = null;
+    if (enabled) {
+      final session = _session;
+      if (!isReady || _localNodeNum == null) throw StateError('Connect to a radio first.');
+      final problem = await _location.ensureAccess();
+      if (session != _session || !isReady) throw StateError('Radio disconnected while requesting location.');
+      if (problem != null) { coverageProblem = problem; notifyListeners(); throw StateError(problem); }
+      BastionFieldLog.instance.start(_localNodeNum!);
+      try {
+      _coverageLocation = _location.watch().listen((fix) => _coverageFix = fix,
+        onError: (Object error) {
+          BastionFieldLog.instance.stop();
+          coverageProblem = 'Location stopped: $error';
+          notifyListeners();
+        }, onDone: () { BastionFieldLog.instance.stop(); notifyListeners(); });
+      } catch (error) {
+        BastionFieldLog.instance.stop();
+        coverageProblem = 'Location could not start: $error';
+        notifyListeners();
+        rethrow;
+      }
+    }
+    notifyListeners();
+  }
+
   final List<Uint8List> _radioConfigSnapshots = [];
   final List<Uint8List> _channelSnapshots = [];
   final List<Uint8List> _moduleConfigSnapshots = [];
@@ -136,6 +221,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   List<MeshtasticNode> get nodes => _nodes;
   List<BastionChatMessage> get messages =>
       _messaging?.messages ?? _archivedMessages;
+  String? get botProblem => _messaging?.botProblem;
   int get pendingMessageCount =>
       _messaging?.pending.length ?? _archivedPending.length;
   bool get busy => _busy;
@@ -322,7 +408,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
       _deviceTelemetry.clear();
       _firmwareVersion = null;
       _connectedAt = DateTime.now();
-      _radioConfigSnapshots.clear();
+      settingsAvailability.clear();
+    _radioConfigSnapshots.clear();
       _channelSnapshots.clear();
       _moduleConfigSnapshots.clear();
 
@@ -350,6 +437,15 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
         (_) => unawaited(_handleLinkLoss()),
       );
       _meshToolsSubscription = session.incomingEnvelopes.listen((bytes) {
+        if (recordingCoverage) {
+          try {
+            final envelope = pb.FromRadio.fromBuffer(bytes);
+            if (envelope.hasPacket()) {
+              unawaited(BastionFieldLog.instance.observe(envelope.packet, _coverageFix, DateTime.now())
+                .catchError((Object _) { coverageProblem = BastionFieldLog.instance.error; notifyListeners(); }));
+            }
+          } on InvalidProtocolBufferException { /* Ignore malformed frames. */ }
+        }
         if (_meshTools.handleEnvelope(bytes)) notifyListeners();
       });
       _waypointSubscription = session.incomingEnvelopes.listen((bytes) async {
@@ -390,6 +486,10 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
           };
           if (target != null) {
             target.add(Uint8List.fromList(envelope.payload!));
+            if (envelope.kind == FromRadioPayloadKind.config || envelope.kind == FromRadioPayloadKind.moduleConfig) {
+              final key = BastionSettingsEvidence.advertisedKey(envelope.payload!, module: envelope.kind == FromRadioPayloadKind.moduleConfig);
+              if (key != null) settingsAvailability[key] = 'Available';
+            }
             notifyListeners();
           }
         }
@@ -614,7 +714,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
 
   Future<Config> readConfig(AdminMessage_ConfigType type) async {
     final admin = _requireAdmin();
-    final config = await admin.getConfig(type);
+    final config = await _readSection('config:${type.value}', () => admin.getConfig(type));
     if (_admin == admin) {
       _radioConfigSnapshots.removeWhere((bytes) {
         try { return Config.fromBuffer(bytes).whichPayloadVariant() == config.whichPayloadVariant(); }
@@ -640,8 +740,19 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     return channel;
   }
 
-  Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) =>
-      _requireAdmin().getModuleConfig(type);
+  Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) async {
+    final admin = _requireAdmin();
+    final config = await _readSection('module:${type.value}', () => admin.getModuleConfig(type));
+    if (_admin == admin) {
+      _moduleConfigSnapshots.removeWhere((bytes) {
+        try { return ModuleConfig.fromBuffer(bytes).whichPayloadVariant() == config.whichPayloadVariant(); }
+        on InvalidProtocolBufferException { return false; }
+      });
+      _moduleConfigSnapshots.add(config.writeToBuffer());
+      notifyListeners();
+    }
+    return config;
+  }
 
   /// Writes are acknowledged by the radio; many make it reboot, after which
   /// the reconnect supervisor restores the link.
@@ -1039,6 +1150,10 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   }
 
   Future<void> _shutdownSession({required bool resetConnection}) async {
+    await _coverageLocation?.cancel();
+    _coverageLocation = null;
+    _coverageFix = null;
+    BastionFieldLog.instance.stop();
     final messaging = _messaging;
     if (messaging != null) _syncMessageSnapshot(messaging);
     await _nodeSubscription?.cancel();
@@ -1073,6 +1188,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     _session = null;
     _nodes = const [];
     _deviceTelemetry.clear();
+    settingsAvailability.clear();
     _radioConfigSnapshots.clear();
     _channelSnapshots.clear();
     _moduleConfigSnapshots.clear();
@@ -1084,7 +1200,11 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   void _relayConnectionChange() => notifyListeners();
 
   @override
+  void notifyListeners() { if (!_disposed) super.notifyListeners(); }
+
+  @override
   void dispose() {
+    _disposed = true;
     _lifecycle.dispose();
     unawaited(_bluetoothSubscription.cancel());
     _userDisconnected = true;
