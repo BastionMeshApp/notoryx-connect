@@ -14,6 +14,7 @@ import 'services/bastion_channel_validation.dart';
 import 'services/bastion_radio_policy.dart';
 import 'services/bastion_node_identity_validation.dart';
 import 'services/meshtastic_radio_coordinator.dart';
+import 'services/meshtastic_admin_session.dart';
 
 /// Editable radio settings backed by the admin session.
 ///
@@ -28,7 +29,7 @@ class RadioSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Radio settings')),
-    body: AnimatedBuilder(
+    body: SafeArea(top: false, child: AnimatedBuilder(
       animation: radio,
       builder: (context, _) => ListView(
         padding: const EdgeInsets.all(16),
@@ -91,7 +92,7 @@ class RadioSettingsPage extends StatelessWidget {
                 context,
                 Icons.tune,
                 _sectionName(type),
-                'Every field the firmware defines',
+                'Available firmware settings',
                 () => _OneofEditor(
                   title: _sectionName(type),
                   load: () async => await radio.readConfig(type),
@@ -122,7 +123,7 @@ class RadioSettingsPage extends StatelessWidget {
             ),
         ],
       ),
-    ),
+    )),
   );
 
   Widget _entry(
@@ -267,11 +268,13 @@ class _AdminEditorState<T extends GeneratedMessage>
           ),
         ],
       ),
-      body: switch ((draft, _loadError)) {
+      body: SafeArea(top: false, child: switch ((draft, _loadError)) {
         (_, final Object loadError) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Could not read from the radio: $loadError'),
+            Text(loadError is MeshtasticSettingsUnavailable
+                ? '${widget.title} settings are unavailable through this radio’s firmware API.'
+                : 'Could not read from the radio: $loadError'),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
@@ -302,7 +305,7 @@ class _AdminEditorState<T extends GeneratedMessage>
             ],
           ),
         ),
-      },
+      }),
     );
   }
 }
@@ -745,7 +748,7 @@ class _ChannelListPageState extends State<_ChannelListPage> {
         ),
       ],
     ),
-    body: ListView(
+    body: SafeArea(top: false, child: ListView(
       padding: const EdgeInsets.all(16),
       children: [
         for (final channel in _channels)
@@ -789,7 +792,7 @@ class _ChannelListPageState extends State<_ChannelListPage> {
           ),
         ],
       ],
-    ),
+    )),
   );
 }
 
@@ -883,9 +886,25 @@ class _ChannelEditor extends StatelessWidget {
   );
 }
 
-/// "STOREFORWARD_CONFIG" → "Storeforward", "LORA_CONFIG" → "Lora".
-String _sectionName(ProtobufEnum type) =>
-    _label(type).replaceAll(RegExp(r' Config$'), '');
+/// Friendly names for protocol abbreviations.
+String _sectionName(ProtobufEnum type) => switch (type.name) {
+  'LORA_CONFIG' => 'LoRa',
+  'DEVICEUI_CONFIG' => 'Device UI',
+  'MQTT_CONFIG' => 'MQTT',
+  'EXTNOTIF_CONFIG' => 'External notifications',
+  'STOREFORWARD_CONFIG' => 'Store & Forward',
+  'RANGETEST_CONFIG' => 'Range test',
+  'CANNEDMSG_CONFIG' => 'Canned messages',
+  'REMOTEHARDWARE_CONFIG' => 'Remote hardware',
+  'NEIGHBORINFO_CONFIG' => 'Neighbor info',
+  'AMBIENTLIGHTING_CONFIG' => 'Ambient lighting',
+  'DETECTIONSENSOR_CONFIG' => 'Detection sensor',
+  'STATUSMESSAGE_CONFIG' => 'Status message',
+  'TRAFFICMANAGEMENT_CONFIG' => 'Traffic management',
+  'TAK_CONFIG' => 'TAK',
+  'MESHBEACON_CONFIG' => 'Mesh Beacon',
+  _ => _label(type).replaceAll(RegExp(r' Config$'), ''),
+};
 
 /// Edits whichever single section a Config or ModuleConfig reply carries.
 ///
@@ -910,7 +929,7 @@ class _OneofEditor extends StatefulWidget {
       if (message.hasField(field.tagNumber)) return field;
     }
     throw StateError(
-      'The radio did not return these settings. This firmware may not support them.',
+      'The radio returned no settings section.',
     );
   }
 

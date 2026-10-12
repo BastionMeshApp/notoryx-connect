@@ -229,28 +229,30 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   Map<int, BastionDeviceTelemetry> get deviceTelemetry =>
       Map.unmodifiable(_deviceTelemetry);
   List<String> get loraSettings {
-    final result = <String>[];
+    String? latest;
     for (final payload in _radioConfigSnapshots) {
       try {
         final summary = BastionRadioConfigCodec.loraSummary(payload);
-        if (summary != null) result.add(summary);
+        if (summary != null) latest = summary;
       } on FormatException {
         // Ignore malformed configuration frames.
       }
     }
-    return List.unmodifiable(result);
+    return List.unmodifiable([if (latest != null) latest]);
   }
 
   List<String> get channelSettings {
-    final result = <String>[];
+    final bySlot = <int, String>{};
     for (final payload in _channelSnapshots) {
       try {
-        result.add(BastionRadioConfigCodec.channelSummary(payload));
+        final slot = BastionRadioConfigCodec.channelMetadata(payload).index;
+        bySlot[slot] = BastionRadioConfigCodec.channelSummary(payload);
       } on FormatException {
         // Ignore malformed channel frames.
       }
     }
-    return List.unmodifiable(result);
+    final slots = bySlot.keys.toList()..sort();
+    return List.unmodifiable(slots.map((slot) => bySlot[slot]!));
   }
 
   /// Latest valid metadata for each channel slot, without exposing PSKs.

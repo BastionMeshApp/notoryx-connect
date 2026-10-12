@@ -1,5 +1,8 @@
-import 'dart:convert';
 import 'dart:typed_data';
+
+import 'package:protobuf/protobuf.dart';
+import '../generated/meshtastic/channel.pb.dart';
+import '../generated/meshtastic/config.pb.dart';
 
 /// Read-only views of the Meshtastic Config and Channel protobuf payloads.
 /// Unknown fields are skipped, and no private channel PSKs are exposed.
@@ -46,46 +49,45 @@ abstract final class BastionRadioConfigCodec {
   }
 
   static String? loraSummary(Uint8List config) {
-    final lora = fields(config)[6];
-    if (lora is! Uint8List) return null;
-    final values = fields(lora);
-    return 'Region: ${values[7] ?? 'not reported'} • '
-        'Preset: ${values[2] ?? 'not reported'} • '
-        'Hop limit: ${values[8] ?? 'not reported'}';
+    try {
+      final message = Config.fromBuffer(config);
+      if (!message.hasLora()) return null;
+      final lora = message.lora;
+      final modem = lora.usePreset
+          ? 'Preset: ${_enumLabel(lora.modemPreset.name)}'
+          : 'Manual modem: ${lora.bandwidth} kHz • SF ${lora.spreadFactor} • Coding rate: ${lora.codingRate}';
+      return 'Region: ${lora.region.name} • $modem • Hop limit: ${lora.hopLimit}';
+    } on InvalidProtocolBufferException {
+      throw const FormatException('Invalid LoRa configuration');
+    }
   }
 
-  /// Decode non-secret channel metadata for UI use.
-  /// The raw PSK is intentionally never returned.
-  static ({int index, int role, String name}) channelMetadata(Uint8List channel) {
-    final values = fields(channel);
-    final index = values[1];
-    final role = values[3];
-    final settings = values[2];
-    if (index is! int || index < 0 || index > 7 ||
-        role is! int || role < 0 || role > 2 ||
-        settings is! Uint8List) {
+  /// Decode protocol defaults without exposing private channel keys.
+  static ({int index, int role, String name}) channelMetadata(Uint8List bytes) {
+    try {
+      final channel = Channel.fromBuffer(bytes);
+      // Check the raw enum too: generated readers preserve unknown enum values
+      // as unknown fields and expose the default through the getter.
+      final role = fields(bytes)[3] ?? channel.role.value;
+      if (channel.index < 0 || channel.index > 7 ||
+          role is! int || role < 0 || role > 2) {
+        throw const FormatException('Invalid channel metadata');
+      }
+      return (index: channel.index, role: role, name: channel.settings.name);
+    } on InvalidProtocolBufferException {
       throw const FormatException('Invalid channel metadata');
     }
-    final details = fields(settings);
-    final nameBytes = details[3];
-    if (nameBytes != null && nameBytes is! Uint8List) {
-      throw const FormatException('Invalid channel name');
-    }
-    return (
-      index: index,
-      role: role,
-      name: nameBytes is Uint8List ? utf8.decode(nameBytes) : '',
-    );
   }
 
   static String channelSummary(Uint8List channel) {
-    final values = fields(channel);
-    final settings = values[2];
-    final details = settings is Uint8List ? fields(settings) : <int, Object>{};
-    final name = details[3] is Uint8List
-        ? utf8.decode(details[3] as Uint8List, allowMalformed: true)
-        : '';
-    final role = switch (values[3]) { 1 => 'Primary', 2 => 'Secondary', _ => 'Disabled' };
-    return 'Channel ${values[1] ?? '?'} • $role • ${name.isEmpty ? '(default)' : name}';
+    final metadata = channelMetadata(channel);
+    final role = switch (metadata.role) {
+      1 => 'Primary', 2 => 'Secondary', _ => 'Disabled',
+    };
+    return 'Channel ${metadata.index} • $role • ${metadata.name.isEmpty ? '(default)' : metadata.name}';
   }
+
+  static String _enumLabel(String name) => name.split('_')
+      .map((word) => word.isEmpty ? word : word[0] + word.substring(1).toLowerCase())
+      .join(' ');
 }
