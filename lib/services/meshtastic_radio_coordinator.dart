@@ -195,14 +195,21 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
       if (!isReady || _localNodeNum == null) throw StateError('Connect to a radio first.');
       final problem = await _location.ensureAccess();
       if (session != _session || !isReady) throw StateError('Radio disconnected while requesting location.');
-      if (problem != null) { coverageProblem = problem; notifyListeners(); return; }
+      if (problem != null) { coverageProblem = problem; notifyListeners(); throw StateError(problem); }
       BastionFieldLog.instance.start(_localNodeNum!);
+      try {
       _coverageLocation = _location.watch().listen((fix) => _coverageFix = fix,
         onError: (Object error) {
           BastionFieldLog.instance.stop();
           coverageProblem = 'Location stopped: $error';
           notifyListeners();
         }, onDone: () { BastionFieldLog.instance.stop(); notifyListeners(); });
+      } catch (error) {
+        BastionFieldLog.instance.stop();
+        coverageProblem = 'Location could not start: $error';
+        notifyListeners();
+        rethrow;
+      }
     }
     notifyListeners();
   }

@@ -102,10 +102,10 @@ class _BastionShellState extends State<BastionShell> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       toolbarHeight: MediaQuery.textScalerOf(context).scale(38) + 18,
-      title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('BASTION', style: TextStyle(fontWeight: FontWeight.w900,
-          color: BastionApp.signal, letterSpacing: 2)),
-        Text('FIELD MESH', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
+          color: Theme.of(context).colorScheme.primary, letterSpacing: 2)),
+        const Text('FIELD MESH', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
       ]),
       actions: [
         Padding(
