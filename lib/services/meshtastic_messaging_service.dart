@@ -258,6 +258,7 @@ class MeshtasticMessagingService {
     if (lower.startsWith('bastion:')) return;
 
     final directToUs = message.to == ownNode;
+    if (!directToUs && message.to != MeshtasticTextCodec.broadcastNode) return;
     final isCommand = lower == '!help' || lower == '!status';
     if (!directToUs && !isCommand) return;
 
@@ -273,9 +274,7 @@ class MeshtasticMessagingService {
     };
     await sendText(
       text: response,
-      destination: directToUs
-          ? message.from
-          : MeshtasticTextCodec.broadcastNode,
+      destination: message.from,
       channel: message.channel,
     );
   }

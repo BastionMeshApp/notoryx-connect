@@ -68,7 +68,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
         final guard = BastionBotGuard.instance;
         final channels = widget.radio.channelMetadata.where((c) => c.role != 0).toList();
         return ListView(padding: const EdgeInsets.all(16), children: [
-          if (status != null) Padding(padding: const EdgeInsets.all(8), child: Text(status!, semanticsLabel: status)),
+          if (status != null) Semantics(liveRegion: true, child: Padding(padding: const EdgeInsets.all(8), child: Text(status!))),
           if (log.error != null) ListTile(leading: const Icon(Icons.error_outline), title: Text(log.error!)),
           Card(child: ExpansionTile(initiallyExpanded: true,
             title: const Text('Incident log'), subtitle: const Text('Private notes saved on this phone'), childrenPadding: const EdgeInsets.all(16), children: [
@@ -80,7 +80,15 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
               TextButton(onPressed: () => action(() => Clipboard.setData(ClipboardData(text: log.exportCsv('incident'))),
                 'Incident CSV copied. Paste into a file or spreadsheet.'), child: const Text('Copy incident CSV')),
               for (final r in log.records.where((r) => r['kind'] == 'incident').toList().reversed)
-                ListTile(title: Text(r['note']! as String), subtitle: Text('${r['time']} • Radio ${r['radio'] ?? 'unassigned'}')),
+                ListTile(title: Text(r['note']! as String), subtitle: Text('${r['time']} • Radio ${r['radio'] ?? 'unassigned'}'),
+                  trailing: IconButton(tooltip: 'Remove incident', icon: const Icon(Icons.delete_outline), onPressed: () async {
+                    final yes = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+                      title: const Text('Remove this incident?'), content: Text(r['note']! as String), actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep')),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remove'))]));
+                    if (!mounted || yes != true) return;
+                    await action(() => log.removeIncident(r), 'Incident removed.');
+                  })),
             ])),
           Card(child: ExpansionTile(title: const Text('Emergency & check-in templates'),
             subtitle: const Text('Edit details, choose a channel, then review before sending'),
@@ -107,7 +115,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
                 onChanged: busy || (!widget.radio.isReady && !widget.radio.recordingCoverage) ? null
                   : (v) => action(() => widget.radio.setCoverageRecording(v), v ? 'Coverage recorder enabled; waiting for a fresh accurate GPS fix and RF packets.' : 'Coverage recorder stopped.')),
               if (widget.radio.coverageProblem != null) Text(widget.radio.coverageProblem!),
-              Text('${log.records.where((r) => r['kind'] == 'coverage').length} readings • maximum 2000 total records • coverage expires after 30 days'),
+              Text('${log.records.where((r) => r['kind'] == 'coverage').length} readings • maximum 2000 coverage readings • coverage expires after 30 days'),
               TextButton(onPressed: () => action(() => Clipboard.setData(ClipboardData(text: log.exportCsv('coverage'))),
                 'Coverage CSV copied. Paste into a file or spreadsheet.'), child: const Text('Copy coverage CSV')),
               for (final r in log.records.where((r) => r['kind'] == 'coverage').toList().reversed.take(50))

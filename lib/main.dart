@@ -98,6 +98,7 @@ class _BastionShellState extends State<BastionShell> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      toolbarHeight: MediaQuery.textScalerOf(context).scale(38) + 18,
       title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('BASTION', style: TextStyle(fontWeight: FontWeight.w900,
           color: BastionApp.signal, letterSpacing: 2)),
@@ -108,7 +109,10 @@ class _BastionShellState extends State<BastionShell> {
           padding: const EdgeInsets.only(right: 12),
           child: AnimatedBuilder(
             animation: radio,
-            builder: (context, _) => Chip(
+            builder: (context, _) => MediaQuery.textScalerOf(context).scale(14) > 20
+                ? Tooltip(message: _connectionLabel(radio.connection.state), child: Icon(
+                    radio.isReady ? Icons.bluetooth_connected : Icons.bluetooth_disabled))
+                : Chip(
               avatar: Icon(
                 radio.isReady ? Icons.bluetooth_connected : Icons.radio_button_checked,
                 size: 16,

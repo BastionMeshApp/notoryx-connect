@@ -133,6 +133,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   /// Evidence belongs to this connection, never to a hardware name/version.
   final Map<String, String> settingsAvailability = {};
   bool checkingSettings = false;
+  bool _cancelSettingsCheck = false;
+  void cancelSettingsCheck() { _cancelSettingsCheck = true; notifyListeners(); }
 
   String availability(String key) => settingsAvailability[key] ?? 'Not checked';
 
@@ -157,15 +159,16 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     if (checkingSettings || !canAdminister) return;
     final admin = _admin;
     checkingSettings = true;
+    _cancelSettingsCheck = false;
     notifyListeners();
     try {
       for (final type in AdminMessage_ConfigType.values) {
-        if (admin != _admin || !canAdminister) break;
+        if (_cancelSettingsCheck || admin != _admin || !canAdminister) break;
         if (type == AdminMessage_ConfigType.SESSIONKEY_CONFIG) continue;
         try { await readConfig(type); } catch (_) { /* Recorded by _readSection. */ }
       }
       for (final type in AdminMessage_ModuleConfigType.values) {
-        if (admin != _admin || !canAdminister) break;
+        if (_cancelSettingsCheck || admin != _admin || !canAdminister) break;
         try { await readModuleConfig(type); } catch (_) { /* Recorded by _readSection. */ }
       }
     } finally {

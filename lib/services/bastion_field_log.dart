@@ -8,7 +8,7 @@ import 'bastion_phone_position.dart';
 class BastionFieldLog extends ChangeNotifier {
   static final instance = BastionFieldLog();
   final List<Map<String, Object?>> _records = [];
-  List<Map<String, Object?>> get records => List.unmodifiable(_records.map(Map<String, Object?>.unmodifiable));
+  List<Map<String, Object?>> get records { _trim(); return List.unmodifiable(_records.map(Map<String, Object?>.unmodifiable)); }
   String? error;
   Future<void> _pending = Future.value();
   final Map<int, DateTime> _lastPeer = {};
@@ -30,13 +30,29 @@ class BastionFieldLog extends ChangeNotifier {
   void _trim() {
     final cutoff = DateTime.now().toUtc().subtract(const Duration(days: 30)).toIso8601String();
     _records.removeWhere((r) => r['kind'] == 'coverage' && (r['time'] as String).compareTo(cutoff) < 0);
-    while (_records.length > 2000) { _records.removeAt(0); }
+    while (_records.where((r) => r['kind'] == 'coverage').length > 2000) {
+      _records.removeAt(_records.indexWhere((r) => r['kind'] == 'coverage'));
+    }
   }
 
   Future<void> addIncident(String text, {int? radio}) async {
     if (text.trim().isEmpty || text.length > 1000) throw ArgumentError('Enter a note of 1–1000 characters.');
     if (error != null) throw StateError(error!);
+    if (_records.where((r) => r['kind'] == 'incident').length >= 500) throw StateError('Incident log full. Export and remove an old note before adding another.');
     await _append({'kind': 'incident', 'time': DateTime.now().toUtc().toIso8601String(), 'radio': radio, 'note': text.trim()});
+  }
+
+  Future<void> removeIncident(Map<String, Object?> record) {
+    final operation = _pending.then((_) async {
+      final index = _records.indexWhere((r) => r['kind'] == 'incident' && r['time'] == record['time'] && r['note'] == record['note']);
+      if (index < 0) return;
+      final removed = _records.removeAt(index);
+      try { await SharedPreferencesAsync().setString('bastion.field_log.v1', jsonEncode(_records)); }
+      catch (_) { _records.insert(index, removed); rethrow; }
+      notifyListeners();
+    });
+    _pending = operation.catchError((Object _) {});
+    return operation;
   }
 
   void start(int radio) {
@@ -96,6 +112,6 @@ class BastionFieldLog extends ChangeNotifier {
       if (text.isNotEmpty && '=+-@\t\r'.contains(text[0]) && v is String) text = "'$text";
       return '"${text.replaceAll('"', '""')}"';
     }
-    return '${fields.join(',')}\r\n${_records.where((r) => r['kind'] == kind).map((r) => fields.map((f) => cell(r[f])).join(',')).join('\r\n')}\r\n';
+    return '${fields.join(',')}\r\n${records.where((r) => r['kind'] == kind).map((r) => fields.map((f) => cell(r[f])).join(',')).join('\r\n')}\r\n';
   }
 }

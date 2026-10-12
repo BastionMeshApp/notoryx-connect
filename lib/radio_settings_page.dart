@@ -47,7 +47,8 @@ class RadioSettingsPage extends StatelessWidget {
           Card(child: ListTile(
             title: const Text('Settings availability'),
             subtitle: const Text('Check reads before editing. Missing startup settings do not prove a module is unsupported. Results reset on reconnect.'),
-            trailing: radio.checkingSettings ? const CircularProgressIndicator() : null,
+            trailing: radio.checkingSettings ? TextButton(
+              onPressed: radio.cancelSettingsCheck, child: const Text('Stop checking')) : const Icon(Icons.refresh),
             onTap: radio.canAdminister && !radio.checkingSettings
                 ? radio.checkSettingsAvailability : null,
           )),
