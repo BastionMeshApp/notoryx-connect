@@ -45,6 +45,9 @@ class BastionApp extends StatelessWidget {
       colorScheme: colors,
       scaffoldBackgroundColor: dark ? const Color(0xFF0D0F0C) : colors.surface,
       disabledColor: colors.onSurfaceVariant,
+      filledButtonTheme: FilledButtonThemeData(style: ButtonStyle(
+        foregroundColor: WidgetStateProperty.resolveWith((states) => states.contains(WidgetState.disabled) ? colors.onSurfaceVariant : null),
+      )),
       listTileTheme: ListTileThemeData(
         textColor: colors.onSurface, iconColor: colors.onSurfaceVariant,
       ),

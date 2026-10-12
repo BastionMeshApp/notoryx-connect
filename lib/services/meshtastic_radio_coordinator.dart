@@ -23,6 +23,7 @@ import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
 import 'bastion_phone_position.dart';
 import 'bastion_field_log.dart';
+import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
@@ -476,15 +477,10 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
           };
           if (target != null) {
             target.add(Uint8List.fromList(envelope.payload!));
-            try {
-              if (envelope.kind == FromRadioPayloadKind.config) {
-                final variant = Config.fromBuffer(envelope.payload!).whichPayloadVariant();
-                if (variant != Config_PayloadVariant.notSet) settingsAvailability['config:${variant.index}'] = 'Available';
-              } else if (envelope.kind == FromRadioPayloadKind.moduleConfig) {
-                final variant = ModuleConfig.fromBuffer(envelope.payload!).whichPayloadVariant();
-                if (variant != ModuleConfig_PayloadVariant.notSet) settingsAvailability['module:${variant.index}'] = 'Available';
-              }
-            } on InvalidProtocolBufferException { /* No availability evidence. */ }
+            if (envelope.kind == FromRadioPayloadKind.config || envelope.kind == FromRadioPayloadKind.moduleConfig) {
+              final key = BastionSettingsEvidence.advertisedKey(envelope.payload!, module: envelope.kind == FromRadioPayloadKind.moduleConfig);
+              if (key != null) settingsAvailability[key] = 'Available';
+            }
             notifyListeners();
           }
         }

@@ -115,6 +115,19 @@ void main() {
     });
   }
 
+  for (final entry in [
+    (AdminMessage_ModuleConfigType.TAK_CONFIG, ModuleConfig(tak: ModuleConfig_TAKConfig())),
+    (AdminMessage_ModuleConfigType.MESHBEACON_CONFIG, ModuleConfig(meshBeacon: ModuleConfig_MeshBeaconConfig())),
+  ]) {
+    test('a radio returning ${entry.$1.name} opens a valid section', () async {
+      final radio = FakeAdminRadio()..readReply = AdminMessage(getModuleConfigResponse: entry.$2);
+      addTearDown(radio.incoming.close);
+      final admin = sessionFor(radio); addTearDown(admin.dispose);
+      final section = await admin.getModuleConfig(entry.$1);
+      expect(section.whichPayloadVariant().index, entry.$1.value);
+    });
+  }
+
   test('matching request ID cannot substitute a different response kind', () async {
     final radio = FakeAdminRadio()..readReply = AdminMessage(getOwnerResponse: User());
     addTearDown(radio.incoming.close);

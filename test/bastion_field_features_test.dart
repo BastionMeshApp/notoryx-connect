@@ -7,6 +7,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:shared_preferences_platform_interface/types.dart';
+
+final class FailingStore extends InMemorySharedPreferencesAsync {
+  FailingStore() : super.empty();
+  @override
+  Future<bool> setString(String key, String value, SharedPreferencesOptions options) async =>
+      throw StateError('Storage unavailable');
+}
 
 void main() {
   setUp(() => SharedPreferencesAsyncPlatform.instance = InMemorySharedPreferencesAsync.empty());
@@ -77,6 +85,16 @@ void main() {
     }
     expect(await reserve(restarted, 7, now.add(const Duration(minutes: 7))), isFalse);
     expect(await reserve(restarted, 7, now.add(const Duration(hours: 1, minutes: 1))), isTrue);
+  });
+
+  test('storage failure blocks bot sends and stops recording without showing unsaved notes', () async {
+    SharedPreferencesAsyncPlatform.instance = FailingStore();
+    final guard = BastionBotGuard(); await guard.update(quiet: false);
+    expect(await guard.reserve(sender: 1, receivedChannel: 0, rxTime: now.millisecondsSinceEpoch ~/ 1000, now: now), isFalse);
+    expect(guard.error, isNotNull);
+    final log = BastionFieldLog(); log.start(42);
+    await expectLater(log.addIncident('Unsaved note'), throwsStateError);
+    expect(log.records, isEmpty); expect(log.recording, isFalse); expect(log.error, isNotNull);
   });
 
   test('theme and dashboard choices persist while dark stays the initial default', () async {

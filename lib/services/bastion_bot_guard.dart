@@ -10,6 +10,8 @@ class BastionBotGuard extends ChangeNotifier {
   int quietEnd = 7;
   int channel = 0;
   bool _loaded = false;
+  Future<void>? _loading;
+  Future<void> _writes = Future.value();
   bool _reserving = false;
   final List<DateTime> _sent = [];
   final Map<int, DateTime> _peers = {};
@@ -19,7 +21,9 @@ class BastionBotGuard extends ChangeNotifier {
     (quietStart < quietEnd ? local.hour >= quietStart && local.hour < quietEnd
       : local.hour >= quietStart || local.hour < quietEnd));
 
-  Future<void> load() async {
+  Future<void> load() => _loading ??= _load();
+
+  Future<void> _load() async {
     if (_loaded) return;
     try {
       final p = SharedPreferencesAsync();
@@ -51,14 +55,17 @@ class BastionBotGuard extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _save() async {
-    try {
-      await SharedPreferencesAsync().setString('bastion.bot.guard.v1', jsonEncode({
-        'quiet': quietEnabled, 'start': quietStart, 'end': quietEnd, 'channel': channel,
-        'sent': _sent.map((v) => v.toUtc().toIso8601String()).toList(),
-        'peers': _peers.map((k, v) => MapEntry('$k', v.toUtc().toIso8601String())),
-      }));
-    } catch (_) { error = 'Bot safeguards could not be saved. Automatic replies are blocked.'; }
+  Future<void> _save() {
+    final encoded = jsonEncode({
+      'quiet': quietEnabled, 'start': quietStart, 'end': quietEnd, 'channel': channel,
+      'sent': _sent.map((v) => v.toUtc().toIso8601String()).toList(),
+      'peers': _peers.map((k, v) => MapEntry('$k', v.toUtc().toIso8601String())),
+    });
+    _writes = _writes.then((_) async {
+      try { await SharedPreferencesAsync().setString('bastion.bot.guard.v1', encoded); }
+      catch (_) { error = 'Bot safeguards could not be saved. Automatic replies are blocked.'; notifyListeners(); }
+    });
+    return _writes;
   }
 
   /// Reserve before sending, including failed sends, to avoid retry storms.
@@ -76,7 +83,7 @@ class BastionBotGuard extends ChangeNotifier {
       _sent.add(now);
       _peers[sender] = now;
       await _save();
-      return error == null;
+      return error == null && !isQuiet(now.toLocal()) && channel == receivedChannel;
     } finally { _reserving = false; }
   }
 }

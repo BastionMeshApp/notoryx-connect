@@ -70,10 +70,10 @@ class _ChannelSharePageState extends State<ChannelSharePage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'This code contains your channel encryption keys. Anyone who '
                   'scans it can read and send on these channels.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             );

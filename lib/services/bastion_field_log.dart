@@ -74,6 +74,7 @@ class BastionFieldLog extends ChangeNotifier {
     if (age.isNegative || age > const Duration(minutes: 2) || fixAge.isNegative || fixAge > const Duration(seconds: 30)) return;
     if (fix.accuracyMeters == null || !fix.accuracyMeters!.isFinite || fix.accuracyMeters! > 50 || fix.accuracyMeters! < 0 ||
         !fix.latitude.isFinite || !fix.longitude.isFinite || fix.latitude.abs() > 90 || fix.longitude.abs() > 180) return;
+    if (packet.id != 0 && _records.any((r) => r['kind'] == 'coverage' && r['radio'] == _radio && r['from'] == packet.from && r['packet'] == packet.id)) return;
     final last = _lastPeer[packet.from];
     if (last != null && now.difference(last) < const Duration(seconds: 30)) return;
     if (packet.hasRxSnr() && !packet.rxSnr.isFinite) return;
@@ -87,6 +88,7 @@ class BastionFieldLog extends ChangeNotifier {
   Future<void> _append(Map<String, Object?> record) {
     final operation = _pending.then((_) async {
       if (error != null) throw StateError(error!);
+      if (record['kind'] == 'incident' && _records.where((r) => r['kind'] == 'incident').length >= 500) throw StateError('Incident log full. Export and remove an old note.');
       final previous = List<Map<String, Object?>>.of(_records);
       _records.add(record);
       _trim();
