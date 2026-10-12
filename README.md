@@ -1,6 +1,6 @@
 # Bastion
 
-**Bastion** is an independent Android field-mesh application .It interoperates with devices running Meshtastic® firmware while maintaining its own name, icon, interface, and project identity.
+**Bastion** is an independent Android field-mesh application. It interoperates with devices running Meshtastic® firmware while maintaining its own name, icon, interface, and project identity.
 
 > **Independent project:** Bastion is not affiliated with, sponsored by, endorsed by, or an official application of Meshtastic LLC.
 
@@ -46,7 +46,7 @@ See [TRADEMARKS.md](TRADEMARKS.md) for Bastion's trademark-use rules.
 
 Meshtastic software components are released under various licenses. Bastion must preserve all applicable license notices, attribution, source-distribution obligations, and other requirements for any upstream component that is actually incorporated into the project.
 
-Bastion includes generated protocol bindings from `meshtastic/protobufs` v2.8.1. Its GPL-3.0 license text is preserved in `licenses/meshtastic-protobufs-GPL-3.0.txt`. Production distribution requires final application-license and corresponding-source review; see [release readiness](docs/RELEASE-READINESS.md).
+Bastion includes generated protocol bindings from `meshtastic/protobufs` v2.8.1. Its GPL-3.0 license text is preserved in `licenses/meshtastic-protobufs-GPL-3.0.txt`. Bastion is licensed under GPL-3.0; see [LICENSE](LICENSE). Keep the generated-code and third-party notices with distributed builds. See [release readiness](docs/RELEASE-READINESS.md) for the remaining release checks.
 
 Third-party Flutter/Dart dependencies remain subject to their respective licenses.
 
@@ -66,7 +66,7 @@ The icon and Bastion visual identity are independent artwork and must not incorp
 
 Requirements:
 
-- Flutter 3.41.5
+- Flutter 3.47.7
 - Java 17
 - Android SDK
 
