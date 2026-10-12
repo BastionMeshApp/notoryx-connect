@@ -40,7 +40,7 @@ jobs:
           protoc -I. -I/usr/include --dart_out="$GITHUB_WORKSPACE/lib/generated" \
             meshtastic/*.proto nanopb.proto google/protobuf/descriptor.proto
           cd "$GITHUB_WORKSPACE"
-          printf 'Generated from meshtastic/protobufs %s by protoc_plugin 25.1.0.\nDo not edit by hand; see .github/workflows/generate-protobufs.yml.\n' "$version" > lib/generated/README.md
+          printf 'Generated from meshtastic/protobufs %s by protoc_plugin 25.1.0.\nDo not edit by hand; see .github/workflows/generate-protobufs.yml.\n\nThe source definitions are licensed GPL-3.0 by the Meshtastic project; see LICENSE and README.md.\n' "$version" > lib/generated/README.md
       - name: Verify generated code compiles
         run: |
           flutter pub get

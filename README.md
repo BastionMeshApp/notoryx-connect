@@ -46,7 +46,7 @@ See [TRADEMARKS.md](TRADEMARKS.md) for Bastion's trademark-use rules.
 
 Meshtastic software components are released under various licenses. Bastion must preserve all applicable license notices, attribution, source-distribution obligations, and other requirements for any upstream component that is actually incorporated into the project.
 
-Bastion's current protocol codec is independently implemented for interoperability rather than copied generated protobuf source. Before any future upstream source, generated code, library, or asset is incorporated, its license must be reviewed and its obligations documented.
+Bastion includes Dart code generated from the official [meshtastic/protobufs](https://github.com/meshtastic/protobufs) definitions (`lib/generated/`, version pinned in `tool/meshtastic_protobufs.version`). Those definitions are licensed under GPL-3.0, which is why Bastion is released under GPL-3.0 as well. Before any further upstream source, generated code, library, or asset is incorporated, its license must be reviewed and its obligations documented.
 
 Third-party Flutter/Dart dependencies remain subject to their respective licenses.
 
@@ -91,6 +91,10 @@ A build should not be represented as production-ready until hardware testing, re
 ## Safety
 
 Bastion may support field and emergency-communications workflows, but software and mesh radio links are not guaranteed emergency lifelines. Maintain appropriate backup communications and safety plans for the environment in which Bastion is used.
+
+## License
+
+Bastion is free software, licensed under the [GNU General Public License v3.0](LICENSE). Anyone who distributes Bastion, modified or not, must make the corresponding source available under the same license.
 
 ## Contributing
 
