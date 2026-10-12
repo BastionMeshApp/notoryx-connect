@@ -54,8 +54,8 @@ abstract final class BastionRadioConfigCodec {
       if (!message.hasLora()) return null;
       final lora = message.lora;
       final values = fields(lora.writeToBuffer());
-      final regionValue = values[7] as int? ?? lora.region.value;
-      final presetValue = values[2] as int? ?? lora.modemPreset.value;
+      final regionValue = _integerField(values, 7, lora.region.value);
+      final presetValue = _integerField(values, 2, lora.modemPreset.value);
       final region = Config_LoRaConfig_RegionCode.valueOf(regionValue)?.name
           ?? 'Unknown ($regionValue)';
       final preset = Config_LoRaConfig_ModemPreset.valueOf(presetValue)?.name;
@@ -74,9 +74,11 @@ abstract final class BastionRadioConfigCodec {
       final channel = Channel.fromBuffer(bytes);
       // Check the raw enum too: generated readers preserve unknown enum values
       // as unknown fields and expose the default through the getter.
-      final role = fields(bytes)[3] ?? channel.role.value;
+      final values = fields(bytes);
+      final role = _integerField(values, 3, channel.role.value);
+      _integerField(values, 1, channel.index);
       if (channel.index < 0 || channel.index > 7 ||
-          role is! int || role < 0 || role > 2) {
+          role < 0 || role > 2) {
         throw const FormatException('Invalid channel metadata');
       }
       return (index: channel.index, role: role, name: channel.settings.name);
@@ -105,6 +107,12 @@ abstract final class BastionRadioConfigCodec {
     }
     final slots = bySlot.keys.toList()..sort();
     return List.unmodifiable(slots.map((slot) => bySlot[slot]!));
+  }
+
+  static int _integerField(Map<int, Object> values, int tag, int fallback) {
+    final value = values[tag] ?? fallback;
+    if (value is! int) throw const FormatException('Invalid integer field');
+    return value;
   }
 
   static String _enumLabel(String name) => name.split('_')

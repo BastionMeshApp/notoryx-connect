@@ -90,6 +90,13 @@ void main() {
         throwsFormatException);
   });
 
+  test('wrong wire types do not become default enum or slot values', () {
+    expect(() => BastionRadioConfigCodec.loraSummary(
+      Uint8List.fromList([0x32, 0x02, 0x3a, 0x00])), throwsFormatException);
+    expect(() => BastionRadioConfigCodec.channelMetadata(
+      Uint8List.fromList([0x0a, 0x00, 0x18, 0x01])), throwsFormatException);
+  });
+
   test('rejects truncated protobuf', () {
     expect(() => BastionRadioConfigCodec.fields(Uint8List.fromList([0x12, 0x05, 0x01])),
         throwsFormatException);
