@@ -1,4 +1,4 @@
-# Bastion release readiness — 2026-10-11
+# Bastion release readiness — 2026-10-12
 
 ## Completed in this change
 - Chat channel selector uses enabled radio slots; every send carries the chosen slot.
@@ -12,13 +12,16 @@
 - Release signing configuration refuses missing secrets; manual workflow builds signed
   APK/AAB and archives signature, checksums and symbols. It does not publish to Play.
 
-## User-reported completion, evidence still needed
-The owner reported settings readback, physical hardware testing and messaging reliability
-as completed on 2026-10-11. No radio models, Android versions, firmware versions,
-logs or test matrix were supplied. This statement is not independent verification.
-The current main editor still reports success after ACK without automatic readback;
-any separately completed implementation must be located and reconciled before claiming it
-is included in a release. The new backup restore does its own readback verification.
+## Recorded device evidence
+The owner reports all six field checks passed on a Seeed T1000-E running Meshtastic
+2.7.26.54e0d8d Beta using development APK source 0f81ca9 (app 0.1.2+3), SHA-256
+b51af4581411d5f6d62bb66ffaf26daf8e6450e058b8939ae796a12a6ab0098b.
+The checks covered settings/presets/channels, themes/large text, incident persistence,
+check-in messaging, coverage/CSV/disconnect stop, and bot quiet hours/limits.
+This is owner-reported hardware evidence; it is not a pass for a newly signed,
+obfuscated artifact or for a second radio. Main PR #49 passed 16 checks and 164 tests.
+The generic main editor still reports success after ACK without automatic readback;
+backup restore performs its own readback verification.
 
 ## Exact candidate acceptance gate
 - Record commit, APK checksum, signing certificate, Android version, radio model/firmware.
@@ -31,7 +34,11 @@ is included in a release. The new backup restore does its own readback verificat
 - Verify signing-key backup/recovery before public distribution.
 
 ## Signing and distribution
-A password-protected RSA-3072 signing key was generated with owner approval. A protected local recovery copy exists outside the repository, and the four GitHub encrypted secrets are configured. The owner must make an offline recovery copy.
+A password-protected RSA-3072 signing key was generated with owner approval. A protected local recovery copy exists outside the repository, and the four GitHub encrypted secrets are configured. The owner must make an offline recovery copy. On 2026-10-12 the existing recovery
+keystore was decrypted and its private key validated without exposing credentials.
+Public certificate/permission policy is pinned in docs/ANDROID-RELEASE-POLICY.json;
+the signed workflow verifies the actual APK against it after apksigner verification.
+See SIGNING-AND-RECOVERY.md for the transition and recovery procedure.
 GitHub repository secrets: BASTION_KEYSTORE_BASE64, BASTION_STORE_PASSWORD,
 BASTION_KEY_PASSWORD, BASTION_KEY_ALIAS. Only the manually started main-branch signed
 candidate workflow uses them. Existing development APKs use a different certificate:
