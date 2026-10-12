@@ -17,6 +17,7 @@ import '../generated/meshtastic/module_config.pb.dart';
 import '../generated/meshtastic/portnums.pbenum.dart';
 import '../generated/meshtastic/telemetry.pb.dart';
 import 'bastion_admin_packet_codec.dart';
+import 'bastion_radio_backup.dart';
 import 'bastion_background_service.dart';
 import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
@@ -45,7 +46,7 @@ import 'meshtastic_text_codec.dart';
 import 'meshtastic_traceroute.dart';
 
 /// Owns one verified Meshtastic radio session and exposes it to the UI.
-class MeshtasticRadioCoordinator extends ChangeNotifier {
+class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGateway {
   MeshtasticRadioCoordinator({
     BastionBackgroundKeeper? background,
     BastionMessageAlerts? alerts,
@@ -574,6 +575,48 @@ class MeshtasticRadioCoordinator extends ChangeNotifier {
       throw StateError('Radio must be connected and ready to change settings.');
     }
     return admin;
+  }
+
+  @override
+  int get backupNodeNum => canAdminister && _localNodeNum != null
+      ? _localNodeNum! : throw StateError('Connect to a ready radio first.');
+  @override
+  String get backupFirmware => _firmwareVersion ?? 'unknown';
+  @override
+  List<AdminMessage_ConfigType> get backupConfigTypes => _radioConfigSnapshots
+      .map(Config.fromBuffer)
+      .where((c) => !c.hasSecurity() && !c.hasSessionkey() && c.whichPayloadVariant() != Config_PayloadVariant.notSet)
+      .map(RadioBackupSnapshot.configType).toSet().toList();
+  @override
+  List<AdminMessage_ModuleConfigType> get backupModuleTypes => _moduleConfigSnapshots
+      .map(ModuleConfig.fromBuffer)
+      .where((m) => m.whichPayloadVariant() != ModuleConfig_PayloadVariant.notSet)
+      .map(RadioBackupSnapshot.moduleType).toSet().toList();
+
+  @override
+  Future<void> writeBackup(RadioBackupSnapshot snapshot) async {
+    final admin = _requireAdmin();
+    await admin.editTransaction(() async {
+      await admin.setOwner(snapshot.owner);
+      for (final c in snapshot.channels) { await admin.setChannel(c); }
+      for (final m in snapshot.modules) { await admin.setModuleConfig(m); }
+      for (final c in snapshot.configs) { await admin.setConfig(c); }
+    });
+  }
+
+  @override
+  Future<void> waitForBackupRadio(int nodeNum) async {
+    // Allow a commit-triggered reboot to start before accepting a ready link.
+    await Future<void>.delayed(const Duration(seconds: 3));
+    final deadline = DateTime.now().add(const Duration(seconds: 90));
+    while (DateTime.now().isBefore(deadline)) {
+      if (_localNodeNum != null && _localNodeNum != nodeNum) {
+        throw StateError('Connected radio changed during restore.');
+      }
+      if (canAdminister && _localNodeNum == nodeNum) return;
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+    throw TimeoutException('Reconnect to the same radio, then verify its settings.');
   }
 
   Future<User> readOwner() => _requireAdmin().getOwner();

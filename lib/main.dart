@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'map_page.dart';
+import 'radio_backup_page.dart';
+import 'services/bastion_message_search.dart';
 import 'mesh_tools_page.dart';
 import 'node_detail_page.dart';
 import 'radio_settings_page.dart';
@@ -12,6 +16,10 @@ import 'services/meshtastic_radio_coordinator.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('licenses/meshtastic-protobufs-GPL-3.0.txt');
+    yield LicenseEntryWithLineBreaks(['Meshtastic protobufs'], text);
+  });
   await BastionTileCache.initialize();
   runApp(const BastionApp());
 }
@@ -94,7 +102,7 @@ class _BastionShellState extends State<BastionShell> {
     ),
     body: SafeArea(child: IndexedStack(index: index, children: [
       _NodesPage(discovery: ble, radio: radio, onOpenTools: () => setState(() => index = 3)),
-      _ChatsPage(
+      BastionChatsPage(
         radio: radio,
         botMode: botMode,
         awayReply: awayReply,
@@ -331,8 +339,8 @@ class _NodesPage extends StatelessWidget {
   );
 }
 
-class _ChatsPage extends StatefulWidget {
-  const _ChatsPage({
+class BastionChatsPage extends StatefulWidget {
+  const BastionChatsPage({
     required this.radio,
     required this.botMode,
     required this.awayReply,
@@ -346,19 +354,22 @@ class _ChatsPage extends StatefulWidget {
   final ValueChanged<String> onAwayReplyChanged;
 
   @override
-  State<_ChatsPage> createState() => _ChatsPageState();
+  State<BastionChatsPage> createState() => _ChatsPageState();
 }
 
-class _ChatsPageState extends State<_ChatsPage> {
+class _ChatsPageState extends State<BastionChatsPage> {
   late final TextEditingController reply =
       TextEditingController(text: widget.awayReply);
   final composer = TextEditingController();
   int destination = 0xffffffff;
+  int channel = 0;
+  final search = TextEditingController();
 
   @override
   void dispose() {
     reply.dispose();
     composer.dispose();
+    search.dispose();
     super.dispose();
   }
 
@@ -366,7 +377,7 @@ class _ChatsPageState extends State<_ChatsPage> {
     final text = (quickText ?? composer.text).trim();
     if (text.isEmpty) return;
     try {
-      await widget.radio.sendText(text: text, destination: destination);
+      await widget.radio.sendText(text: text, destination: destination, channel: channel);
       if (quickText == null) composer.clear();
     } catch (error) {
       if (mounted) {
@@ -389,6 +400,15 @@ class _ChatsPageState extends State<_ChatsPage> {
     animation: widget.radio,
     builder: (context, _) {
       final messages = widget.radio.messages;
+      final matches = BastionMessageSearch.filter(messages, search.text,
+          (message) => message.text);
+      final channels = widget.radio.channelMetadata.where((c) => c.role != 0).toList();
+      if (channels.isNotEmpty && !channels.any((c) => c.index == channel)) {
+        channel = channels.first.index;
+      }
+      if (destination != 0xffffffff && !widget.radio.nodes.any((n) => n.num == destination)) {
+        destination = 0xffffffff;
+      }
       final connected = widget.radio.isReady;
       return ListView(
         padding: const EdgeInsets.all(16),
@@ -425,6 +445,7 @@ class _ChatsPageState extends State<_ChatsPage> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               const SizedBox(height: 8),
               DropdownButtonFormField<int>(
+                key: ValueKey(destination),
                 initialValue: destination,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
@@ -433,7 +454,7 @@ class _ChatsPageState extends State<_ChatsPage> {
                 items: [
                   const DropdownMenuItem(
                     value: 0xffffffff,
-                    child: Text('Channel 0 • Broadcast'),
+                    child: Text('Broadcast'),
                   ),
                   for (final node in widget.radio.nodes)
                     DropdownMenuItem(
@@ -444,6 +465,19 @@ class _ChatsPageState extends State<_ChatsPage> {
                 onChanged: (value) {
                   if (value != null) setState(() => destination = value);
                 },
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                key: ValueKey('channel-$channel'),
+                initialValue: channel,
+                decoration: const InputDecoration(labelText: 'Channel', border: OutlineInputBorder()),
+                items: channels.isEmpty
+                    ? [const DropdownMenuItem(value: 0, child: Text('Channel 0 • Broadcast')),
+                       if (channel != 0) DropdownMenuItem(value: channel,
+                           child: Text('Channel $channel • Offline'))]
+                    : [for (final c in channels) DropdownMenuItem(value: c.index,
+                        child: Text('Channel ${c.index} • ${c.name.isEmpty ? 'Default' : c.name}'))],
+                onChanged: (value) { if (value != null) setState(() => channel = value); },
               ),
             ]),
           )),
@@ -457,7 +491,7 @@ class _ChatsPageState extends State<_ChatsPage> {
                 maxLines: 4,
                 decoration: InputDecoration(
                   labelText: destination == 0xffffffff
-                      ? 'Message Channel 0'
+                      ? 'Message Channel $channel'
                       : 'Message ${_nodeName(destination)}',
                   border: const OutlineInputBorder(),
                 ),
@@ -486,11 +520,19 @@ class _ChatsPageState extends State<_ChatsPage> {
               ]),
             ]),
           )),
+          TextField(
+            controller: search,
+            decoration: const InputDecoration(labelText: 'Search message history',
+                prefixIcon: Icon(Icons.search), border: OutlineInputBorder()),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (messages.isNotEmpty && matches.isEmpty)
+            const Padding(padding: EdgeInsets.all(16), child: Text('No messages match your search.')),
           if (messages.isEmpty)
             const _EmptyState(
               icon: Icons.mark_chat_unread_outlined,
               title: 'No mesh messages yet',
-              detail: 'Incoming Channel 0 and direct messages will appear here after a radio is connected.',
+              detail: 'Incoming channel and direct messages will appear here after a radio is connected.',
             )
           else ...[
             const Padding(
@@ -498,7 +540,7 @@ class _ChatsPageState extends State<_ChatsPage> {
               child: Text('MESSAGE TIMELINE',
                 style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: .8)),
             ),
-            for (final message in messages.reversed.take(50))
+            for (final message in matches.reversed)
               Card(child: ListTile(
                 leading: CircleAvatar(
                   child: Icon(message.direction == BastionMessageDirection.outgoing
@@ -800,7 +842,7 @@ class _SettingsPage extends StatelessWidget {
                 : radio.channelSettings.join('\n')),
             ),
             ListTile(title: const Text('Modules'),
-              subtitle: Text('${radio.moduleConfigCount} module messages received • editing coming soon')),
+              subtitle: Text('${radio.moduleConfigCount} module messages received • edit through radio settings')),
           ],
         )),
       ),
@@ -827,6 +869,14 @@ class _SettingsPage extends StatelessWidget {
           ));
         },
       ),
+      Card(child: ListTile(
+        leading: const Icon(Icons.enhanced_encryption_outlined),
+        title: const Text('Encrypted radio backup / restore'),
+        subtitle: const Text('Password-protected settings and channel keys'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => RadioBackupPage(radio: radio))),
+      )),
       const _MapCacheCard(),
       Card(child: SwitchListTile(
         secondary: const Icon(Icons.battery_saver_outlined),
@@ -840,6 +890,10 @@ class _SettingsPage extends StatelessWidget {
         leading: Icon(Icons.security_outlined), title: Text('Safety mode'),
         subtitle: Text('No unverified device is treated as a mesh node'),
         trailing: Icon(Icons.verified_user_outlined, color: BastionApp.signal))),
+      Card(child: ListTile(
+        leading: const Icon(Icons.description_outlined), title: const Text('Third-party licenses'),
+        onTap: () => showLicensePage(context: context, applicationName: 'Bastion'),
+      )),
       const Card(child: ListTile(
         leading: Icon(Icons.info_outline), title: Text('Bastion'),
         subtitle: Text('Development build • Independent mesh companion'))),

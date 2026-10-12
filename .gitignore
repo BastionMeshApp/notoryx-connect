@@ -9,3 +9,8 @@ coverage/
 key.properties
 *.env
 .DS_Store
+
+*.p12
+
+__pycache__/
+*.pyc
