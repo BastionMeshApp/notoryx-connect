@@ -50,4 +50,3 @@ if __name__=='__main__':
  decoded=manifest(sys.argv[1])
  verify(decoded,Path(sys.argv[2]).read_text(),policy,(match[1],int(match[2])))
  print('Release package, version, permission set and certificate match policy.')
-

@@ -3,9 +3,15 @@ on:
   push:
     paths:
       - '.github/workflows/**'
+      - 'scripts/verify_release_package.py'
+      - 'test/release_package_test.py'
+      - 'docs/ANDROID-RELEASE-POLICY.json'
   pull_request:
     paths:
       - '.github/workflows/**'
+      - 'scripts/verify_release_package.py'
+      - 'test/release_package_test.py'
+      - 'docs/ANDROID-RELEASE-POLICY.json'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,3 +30,5 @@ jobs:
           sudo install actionlint /usr/local/bin/actionlint
       - name: Validate GitHub Actions YAML
         run: actionlint -color
+      - name: Verify release policy failure handling
+        run: python3 test/release_package_test.py
