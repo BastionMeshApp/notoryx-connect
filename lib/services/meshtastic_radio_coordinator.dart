@@ -121,6 +121,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   List<BastionChatMessage> _archivedMessages = const [];
   List<PendingTextMessage> _archivedPending = const [];
   bool _busy = false;
+  bool _disposed = false;
   bool _botEnabled = false;
   String _botReply =
       'Bastion is monitoring the mesh. I will reply when available.';
@@ -400,7 +401,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
       _firmwareVersion = null;
       _connectedAt = DateTime.now();
       settingsAvailability.clear();
-      _radioConfigSnapshots.clear();
+    _radioConfigSnapshots.clear();
       _channelSnapshots.clear();
       _moduleConfigSnapshots.clear();
 
@@ -731,8 +732,19 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     return channel;
   }
 
-  Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) =>
-      _readSection('module:${type.value}', () => _requireAdmin().getModuleConfig(type));
+  Future<ModuleConfig> readModuleConfig(AdminMessage_ModuleConfigType type) async {
+    final admin = _requireAdmin();
+    final config = await _readSection('module:${type.value}', () => admin.getModuleConfig(type));
+    if (_admin == admin) {
+      _moduleConfigSnapshots.removeWhere((bytes) {
+        try { return ModuleConfig.fromBuffer(bytes).whichPayloadVariant() == config.whichPayloadVariant(); }
+        on InvalidProtocolBufferException { return false; }
+      });
+      _moduleConfigSnapshots.add(config.writeToBuffer());
+      notifyListeners();
+    }
+    return config;
+  }
 
   /// Writes are acknowledged by the radio; many make it reboot, after which
   /// the reconnect supervisor restores the link.
@@ -1169,7 +1181,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     _nodes = const [];
     _deviceTelemetry.clear();
     settingsAvailability.clear();
-      _radioConfigSnapshots.clear();
+    _radioConfigSnapshots.clear();
     _channelSnapshots.clear();
     _moduleConfigSnapshots.clear();
     _localNodeNum = null;
@@ -1180,7 +1192,11 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   void _relayConnectionChange() => notifyListeners();
 
   @override
+  void notifyListeners() { if (!_disposed) super.notifyListeners(); }
+
+  @override
   void dispose() {
+    _disposed = true;
     _lifecycle.dispose();
     unawaited(_bluetoothSubscription.cancel());
     _userDisconnected = true;
