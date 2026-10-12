@@ -53,7 +53,11 @@ abstract final class BastionRadioConfigCodec {
       final message = Config.fromBuffer(config);
       if (!message.hasLora()) return null;
       final lora = message.lora;
-      final values = fields(lora.writeToBuffer());
+      final encoded = fields(config)[6];
+      if (encoded is! Uint8List) {
+        throw const FormatException('Invalid LoRa configuration');
+      }
+      final values = fields(encoded);
       final regionValue = _integerField(values, 7, lora.region.value);
       final presetValue = _integerField(values, 2, lora.modemPreset.value);
       final region = Config_LoRaConfig_RegionCode.valueOf(regionValue)?.name
