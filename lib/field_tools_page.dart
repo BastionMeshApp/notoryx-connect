@@ -70,7 +70,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
         return ListView(padding: const EdgeInsets.all(16), children: [
           if (status != null) Semantics(liveRegion: true, child: Padding(padding: const EdgeInsets.all(8), child: Text(status!))),
           if (log.error != null) ListTile(leading: const Icon(Icons.error_outline), title: Text(log.error!)),
-          Card(child: ExpansionTile(initiallyExpanded: true,
+          Card(key: const ValueKey('incident-log'), child: ExpansionTile(initiallyExpanded: true,
             title: const Text('Incident log'), subtitle: const Text('Private notes saved on this phone'), childrenPadding: const EdgeInsets.all(16), children: [
               TextField(controller: note, maxLength: 1000, minLines: 2, maxLines: 5,
                 decoration: const InputDecoration(labelText: 'Incident or observation')),
@@ -90,7 +90,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
                     await action(() => log.removeIncident(r), 'Incident removed.');
                   })),
             ])),
-          Card(child: ExpansionTile(title: const Text('Emergency & check-in templates'),
+          Card(key: const ValueKey('message-templates'), child: ExpansionTile(title: const Text('Emergency & check-in templates'),
             subtitle: const Text('Edit details, choose a channel, then review before sending'),
             childrenPadding: const EdgeInsets.all(16), children: [
               Wrap(spacing: 8, children: [for (final t in templates.entries)
@@ -106,7 +106,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
                 child: const Text('Review message')),
               const Text('A template is ordinary mesh text. It does not contact emergency services.'),
             ])),
-          Card(child: ExpansionTile(title: const Text('Coverage history'),
+          Card(key: const ValueKey('coverage-log'), child: ExpansionTile(title: const Text('Coverage history'),
             subtitle: const Text('Receiver location with received RF signal • local recording only'),
             childrenPadding: const EdgeInsets.all(16), children: [
               SwitchListTile(title: const Text('Record coverage'),
@@ -122,7 +122,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
                 ListTile(title: Text('Node ${r['from']} • SNR ${r['snr'] ?? '—'} • RSSI ${r['rssi'] ?? '—'}'),
                   subtitle: Text('${r['time']}\nReceiver ${r['lat']}, ${r['lon']} • Radio ${r['radio']}')),
             ])),
-          Card(child: ExpansionTile(title: const Text('Bot safeguards & quiet hours'),
+          Card(key: const ValueKey('bot-safeguards'), child: ExpansionTile(title: const Text('Bot safeguards & quiet hours'),
             subtitle: const Text('6 replies/hour • 30-second spacing • 5-minute per-node cooldown'),
             children: [
               const ListTile(title: Text('Enable Bot Mode in Chats for this session.'),
