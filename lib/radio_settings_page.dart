@@ -325,7 +325,7 @@ class _AdminEditorState<T extends GeneratedMessage>
               if (_saving) const ListTile(title: Text('Waiting for reconnect and a fresh settings read…')),
               if (_saveProblem != null) Semantics(liveRegion: true, child: Text(_saveProblem!)),
               if (_saveAttempted && !_saving || _saveProblem != null && !_saving)
-                TextButton(onPressed: _load, child: const Text('Reload from radio')),
+                TextButton(onPressed: _reload, child: const Text('Reload from radio')),
               ...widget.fields(draft, () => setState(() {})),
               if (error != null)
                 Padding(

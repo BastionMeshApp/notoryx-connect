@@ -1,5 +1,6 @@
 import 'package:bastion/radio_settings_page.dart';
 import 'package:bastion/generated/meshtastic/admin.pb.dart';
+import 'package:bastion/generated/meshtastic/mesh.pb.dart' show User;
 import 'package:bastion/generated/meshtastic/module_config.pb.dart';
 import 'package:bastion/services/meshtastic_admin_session.dart';
 import 'package:bastion/services/meshtastic_radio_coordinator.dart';
@@ -12,7 +13,41 @@ class UnavailableRadio extends MeshtasticRadioCoordinator {
       throw MeshtasticSettingsUnavailable(type.name);
 }
 
+class SaveVerificationRadio extends MeshtasticRadioCoordinator {
+  SaveVerificationRadio({required this.apply});
+  final bool apply;
+  int reads = 0, writes = 0;
+  User owner = User(longName: 'Trail', shortName: 'TR');
+  @override bool get canAdminister => true;
+  @override int? get localNodeNum => 42;
+  @override Future<User> readOwner() async { reads++; return owner.deepCopy(); }
+  @override Future<void> writeOwner(User value) async { writes++; if (apply) owner = value.deepCopy(); }
+  @override Future<void> waitForBackupRadio(int node) async {}
+}
+
 void main() {
+  for (final applied in [true, false]) {
+    testWidgets('owner save closes only after matching fresh read: $applied', (tester) async {
+      final radio = SaveVerificationRadio(apply: applied); addTearDown(radio.dispose);
+      await tester.pumpWidget(MaterialApp(home: RadioSettingsPage(radio: radio)));
+      await tester.tap(find.text('Owner')); await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Trail Updated'); await tester.pump();
+      await tester.tap(find.text('SAVE')); await tester.pumpAndSettle();
+      await tester.tap(find.text('Save')); await tester.pumpAndSettle();
+      expect(radio.writes, 1); expect(radio.reads, 2);
+      if (applied) {
+        expect(find.text('Owner saved and verified from radio.'), findsOneWidget);
+        expect(find.text('Radio settings'), findsOneWidget);
+      } else {
+        expect(find.textContaining('Save not verified:'), findsOneWidget);
+        expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'SAVE')).onPressed, isNull);
+        await tester.tap(find.text('Reload from radio')); await tester.pumpAndSettle();
+        expect(radio.writes, 1); expect(radio.reads, 3);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('unavailable settings stay read-only and clear of system navigation', (tester) async {
     final radio = UnavailableRadio();
     addTearDown(radio.dispose);
