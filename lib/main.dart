@@ -63,7 +63,7 @@ class BastionApp extends StatelessWidget {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: BastionPreferences.instance,
     builder: (context, _) => MaterialApp(
-      title: 'Bastion', debugShowCheckedModeBanner: false,
+      title: 'NOTORYX Connect', debugShowCheckedModeBanner: false,
       theme: appearance(Brightness.light), darkTheme: appearance(Brightness.dark),
       themeMode: BastionPreferences.instance.theme,
       home: const BastionShell(),
@@ -83,7 +83,7 @@ class _BastionShellState extends State<BastionShell> {
   final radio = MeshtasticRadioCoordinator();
   bool botMode = false;
   bool lowPowerMode = false;
-  String awayReply = 'Bastion is monitoring the mesh. I will reply when available.';
+  String awayReply = 'NOTORYX Connect is monitoring the mesh. I will reply when available.';
 
   static const labels = ['NODES', 'CHATS', 'MAP', 'TOOLS', 'SETTINGS'];
   static const icons = [
