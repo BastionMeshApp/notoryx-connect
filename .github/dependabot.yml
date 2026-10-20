@@ -7,8 +7,8 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     target-branch: main
-    labels:
-      - dependencies
+    # No repository labels are required for dependency updates.
+    labels: []
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -16,5 +16,5 @@ updates:
       day: monday
     open-pull-requests-limit: 5
     target-branch: main
-    labels:
-      - dependencies
+    # No repository labels are required for dependency updates.
+    labels: []

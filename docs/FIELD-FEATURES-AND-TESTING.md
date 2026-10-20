@@ -1,6 +1,6 @@
 # Field features and device testing
 
-This change adds app version 0.1.2+3. It is a test candidate; the existing v0.1.1-beta.1 release is unchanged.
+These features were introduced in app version 0.1.2+3. Status reconciled 2026-10-20: the latest published beta is v0.1.3-beta.1. See [release readiness](RELEASE-READINESS.md) for exact-artifact and owner-reported device evidence.
 
 ## Settings availability
 
@@ -23,16 +23,16 @@ Tools → Incident log, emergency templates & coverage:
 
 Phone field records are not encrypted. Coverage exports contain location history. SharedPreferences is suitable for this bounded local log; it is not a backup or a multi-device incident-management service.
 
-## Physical test matrix — pending
+## Physical test matrix — evidence and remaining coverage
 
 Automated fixtures are not real-radio certification. Record actual hardware/firmware/build hashes and observations rather than assuming a firmware family is supported.
 
 | Device/build | Status | Required checks |
 |---|---|---|
-| Seeed T1000-E, 2.7.26.54e0d8d Beta | New candidate not yet tested | Availability/empty TAK and Mesh Beacon, presets/slot zero, explicit retry/cancel, template send/ACK, opt-in GPS, disconnect stop |
+| Seeed T1000-E, 2.7.26.54e0d8d Beta | Owner reports six field checks passed on 0.1.2 development APK; later signed-candidate acceptance is recorded in release readiness | Availability/empty TAK and Mesh Beacon, presets/slot zero, explicit retry/cancel, template send/ACK, opt-in GPS, disconnect stop |
 | Second radio on a recent supported firmware | Hardware needed | Present/absent module responses, no wrong-section editor, distinct radio attribution, channel selection |
 | Firmware returning malformed/empty/no response | Automated fixtures | Empty differs from timeout; mismatched or forged replies cannot open a draft |
 | Android gesture/three-button navigation | Device pass needed | Insets on editors and field tools, keyboard, 200% text, light/dark/system theme |
 | Background/restart/Bluetooth toggle | Device pass needed | Incident persistence, coverage stays stopped after restart/disconnect, bot budget survives restart, quiet hours, foreground behavior |
 
-Before publishing another beta: complete a fresh T1000-E pass on this exact APK, inspect coverage CSV receiver coordinates and signal/time columns, verify no location broadcasts unless the separate sharing switch is enabled, and confirm failure messages under denied GPS/storage permissions. Additional radios need physical access.
+A reported device pass does not certify every matrix scenario. For the next candidate, record which checks were actually repeated. Before publishing another beta: complete a fresh T1000-E pass on this exact APK, inspect coverage CSV receiver coordinates and signal/time columns, verify no location broadcasts unless the separate sharing switch is enabled, and confirm failure messages under denied GPS/storage permissions. Additional radios need physical access.

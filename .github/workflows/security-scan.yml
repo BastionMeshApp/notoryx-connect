@@ -10,6 +10,10 @@ permissions:
   contents: read
 jobs:
   secrets:
+    permissions:
+      contents: read
+      # Gitleaks reads the commit list for pull_request events, including Dependabot.
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

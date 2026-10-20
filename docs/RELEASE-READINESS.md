@@ -1,6 +1,6 @@
-# Bastion release readiness — 2026-10-12
+# Bastion release readiness — reconciled 2026-10-20
 
-## Completed in this change
+## Implemented on main
 - Chat channel selector uses enabled radio slots; every send carries the chosen slot.
 - Search filters the full retained local history, including queued messages.
 - Password-encrypted radio settings backup/restore, with preview, target confirmation,
@@ -20,11 +20,19 @@ The checks covered settings/presets/channels, themes/large text, incident persis
 check-in messaging, coverage/CSV/disconnect stop, and bot quiet hours/limits.
 This is owner-reported hardware evidence; it is not a pass for a newly signed,
 obfuscated artifact or for a second radio. Main PR #49 passed 16 checks and 164 tests.
-The next 0.1.3+4 candidate adds fresh same-radio readback for generic editor saves;
-its new save/reconnect behavior still needs a physical test. Bulk channel-link imports
+PR #51 adds fresh same-radio readback for generic editor saves; PR #52 preserves
+drafts and the submitted snapshot while verification runs. The published
+[v0.1.3-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.3-beta.1)
+(app 0.1.3+4, source `68abe898`) records owner verification of the exact signed
+candidate on the T1000-E and authorization to release. Its
+[signed build](https://github.com/charlottemeshtastic/Bastion-Meshtastic/actions/runs/38292447353)
+passed 174 app tests. This later evidence supersedes the earlier pending-candidate
+status; it does not establish a pass for a second radio or every scenario below. Bulk channel-link imports
 retain their separate transaction flow. Backup restore performs its own readback verification.
 
-## Exact candidate acceptance gate
+The [v0.1.2-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.2-beta.1) also records owner confirmation that the stable-signed, obfuscated candidate installed, connected, sent a message and retained an incident after restart. Both release records are owner-reported evidence, not independent hardware certification.
+
+## Acceptance gate for the next exact candidate
 - Record commit, APK checksum, signing certificate, Android version, radio model/firmware.
 - Install the signed candidate, force-stop and relaunch. Verify QR camera permissions,
   selected secondary-channel delivery, DM, search, backups and wrong-password rejection.
