@@ -16,7 +16,7 @@ if 'android.permission.BLUETOOTH_SCAN' not in s:
 '''
     s=s.replace('<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
                 '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'+permissions)
-s=s.replace('android:label="bastion"', 'android:label="Bastion"')
+s=s.replace('android:label="bastion"', 'android:label="NOTORYX Connect"')
 # Foreground service that keeps the BLE link alive in the background.
 if 'flutter_foreground_task.service.ForegroundService' not in s:
     service = '''        <service
