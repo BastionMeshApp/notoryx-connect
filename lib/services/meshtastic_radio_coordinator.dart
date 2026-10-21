@@ -127,8 +127,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   bool _busy = false;
   bool _disposed = false;
   bool _botEnabled = false;
-  String _botReply =
-      'Bastion is monitoring the mesh. I will reply when available.';
+  String _botReply = MeshtasticMessagingService.defaultAwayReply;
   int? _localNodeNum;
   String? _firmwareVersion;
   DateTime _connectedAt = DateTime.now();
@@ -1078,7 +1077,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
       );
       connection.fail(
         StateError(
-          'Bluetooth is off. Bastion will reconnect to ${device.name} when it is turned back on.',
+          'Bluetooth is off. NOTORYX Connect will reconnect to ${device.name} when it is turned back on.',
         ),
       );
       notifyListeners();

@@ -82,7 +82,7 @@ class _BastionShellState extends State<BastionShell> {
   final ble = MeshtasticBleDiscovery();
   final radio = MeshtasticRadioCoordinator();
   bool botMode = false;
-  String awayReply = 'NOTORYX Connect is monitoring the mesh. I will reply when available.';
+  String awayReply = MeshtasticMessagingService.defaultAwayReply;
 
   static const labels = ['NODES', 'CHATS', 'MAP', 'TOOLS', 'SETTINGS'];
   static const icons = [
@@ -102,9 +102,9 @@ class _BastionShellState extends State<BastionShell> {
     appBar: AppBar(
       toolbarHeight: MediaQuery.textScalerOf(context).scale(38) + 18,
       title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('BASTION', style: TextStyle(fontWeight: FontWeight.w900,
+        Text('NOTORYX', style: TextStyle(fontWeight: FontWeight.w900,
           color: Theme.of(context).colorScheme.primary, letterSpacing: 2)),
-        const Text('FIELD MESH', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
+        const Text('CONNECT', style: TextStyle(fontSize: 10, letterSpacing: 1.4)),
       ]),
       actions: [
         Padding(
@@ -355,7 +355,7 @@ class _NodesPage extends StatelessWidget {
         _Notice(
           text: radio.isReady
               ? 'Verified Meshtastic session ready. Live NodeDB updates will appear above.'
-              : 'Scan, then tap CONNECT on a radio. Bastion verifies the Meshtastic service, performs the PhoneAPI handshake, and synchronizes NodeDB before marking the session ready.',
+              : 'Scan, then tap CONNECT on a radio. NOTORYX Connect verifies the Meshtastic service, performs the PhoneAPI handshake, and synchronizes NodeDB before marking the session ready.',
           icon: radio.isReady ? Icons.verified_outlined : Icons.info_outline),
       ],
     ),
@@ -927,20 +927,20 @@ class _SettingsPage extends StatelessWidget {
         trailing: Icon(Icons.verified_user_outlined, color: BastionApp.signal))),
       Card(child: ListTile(
         leading: const Icon(Icons.description_outlined), title: const Text('Third-party licenses'),
-        onTap: () => showLicensePage(context: context, applicationName: 'Bastion'),
+        onTap: () => showLicensePage(context: context, applicationName: 'NOTORYX Connect'),
       )),
       const Card(child: ListTile(
-        leading: Icon(Icons.info_outline), title: Text('Bastion'),
+        leading: Icon(Icons.info_outline), title: Text('NOTORYX Connect'),
         subtitle: Text('Development build • Independent mesh companion'))),
       const Card(child: ListTile(
         leading: Icon(Icons.gavel_outlined),
         title: Text('Trademark & compatibility'),
         subtitle: Text(
-          'Compatible with Meshtastic® firmware. Meshtastic® is a registered trademark of Meshtastic LLC. Meshtastic software components are released under various licenses, see GitHub for details. No warranty is provided - use at your own risk.\\n\\nBastion is independently developed and is not affiliated with, sponsored by, or endorsed by Meshtastic LLC.',
+          'Compatible with Meshtastic® firmware. Meshtastic® is a registered trademark of Meshtastic LLC. Meshtastic software components are released under various licenses, see GitHub for details. No warranty is provided - use at your own risk.\n\nNOTORYX Connect is independently developed and is not affiliated with, sponsored by, or endorsed by Meshtastic LLC.',
         ),
       )),
       const _Notice(
-        text: 'Bastion is an independent project compatible with Meshtastic® firmware. It is not affiliated with, sponsored by, or endorsed by Meshtastic LLC. Do not rely on this development build as a sole method of emergency communication.',
+        text: 'NOTORYX Connect is an independent project compatible with Meshtastic® firmware. It is not affiliated with, sponsored by, or endorsed by Meshtastic LLC. Do not rely on this development build as a sole method of emergency communication.',
         icon: Icons.shield_outlined),
     ],
   );

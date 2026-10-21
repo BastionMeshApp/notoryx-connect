@@ -3,9 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bastion/main.dart';
 
 void main() {
-  testWidgets('Bastion exposes five functional field tabs', (tester) async {
+  testWidgets('NOTORYX Connect exposes five functional field tabs', (tester) async {
     await tester.pumpWidget(const BastionApp());
-    expect(find.text('FIELD MESH'), findsOneWidget);
+    expect(find.text('NOTORYX'), findsOneWidget);
+    expect(find.text('CONNECT'), findsOneWidget);
     expect(find.text('MESH COMMAND'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.chat_bubble_outline).last);
@@ -38,5 +39,12 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Low-power field mode'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Trademark & compatibility'),
+      250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('NOTORYX Connect'), findsOneWidget);
+    expect(find.textContaining('Bastion'), findsNothing);
   });
 }

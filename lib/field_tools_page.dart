@@ -126,7 +126,7 @@ class _FieldToolsPageState extends State<FieldToolsPage> {
             subtitle: const Text('6 replies/hour • 30-second spacing • 5-minute per-node cooldown'),
             children: [
               const ListTile(title: Text('Enable Bot Mode in Chats for this session.'),
-                subtitle: Text('Only fresh messages on the selected channel qualify. Replay and Bastion replies are ignored. Quiet hours use this phone’s local time.')),
+                subtitle: Text('Only fresh messages on the selected channel qualify. Replays and bot replies (NOTORYX: or Bastion:) are ignored. Quiet hours use this phone’s local time.')),
               SwitchListTile(title: const Text('Quiet hours'), value: guard.quietEnabled,
                 onChanged: (v) => guard.update(quiet: v)),
               for (final isStart in [true, false]) Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
