@@ -82,7 +82,6 @@ class _BastionShellState extends State<BastionShell> {
   final ble = MeshtasticBleDiscovery();
   final radio = MeshtasticRadioCoordinator();
   bool botMode = false;
-  bool lowPowerMode = false;
   String awayReply = 'Bastion is monitoring the mesh. I will reply when available.';
 
   static const labels = ['NODES', 'CHATS', 'MAP', 'TOOLS', 'SETTINGS'];
@@ -144,11 +143,7 @@ class _BastionShellState extends State<BastionShell> {
       ),
       MapPage(radio: radio),
       _ToolsPage(discovery: ble, radio: radio),
-      _SettingsPage(
-        radio: radio,
-        lowPowerMode: lowPowerMode,
-        onLowPowerChanged: (value) => setState(() => lowPowerMode = value),
-      ),
+      _SettingsPage(radio: radio),
     ])),
     bottomNavigationBar: NavigationBar(
       selectedIndex: index,
@@ -823,10 +818,8 @@ class _ToolsPageState extends State<_ToolsPage> {
 }
 
 class _SettingsPage extends StatelessWidget {
-  const _SettingsPage({required this.radio, required this.lowPowerMode, required this.onLowPowerChanged});
+  const _SettingsPage({required this.radio});
   final MeshtasticRadioCoordinator radio;
-  final bool lowPowerMode;
-  final ValueChanged<bool> onLowPowerChanged;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -914,11 +907,17 @@ class _SettingsPage extends StatelessWidget {
             builder: (_) => RadioBackupPage(radio: radio))),
       )),
       const _MapCacheCard(),
-      Card(child: SwitchListTile(
-        secondary: const Icon(Icons.battery_saver_outlined),
-        title: const Text('Low-power field mode'),
-        subtitle: const Text('Reduce optional background activity'),
-        value: lowPowerMode, onChanged: onLowPowerChanged)),
+      AnimatedBuilder(
+        animation: radio,
+        builder: (context, _) => Card(child: SwitchListTile(
+          secondary: const Icon(Icons.battery_saver_outlined),
+          title: const Text('Low-power field mode'),
+          subtitle: const Text('Shared phone location uses balanced GPS accuracy and '
+              'updates every 15 min, or after 200 m of movement. '
+              'Radio link and coverage recording are unchanged.'),
+          isThreeLine: true,
+          value: radio.lowPowerMode,
+          onChanged: (value) => radio.setLowPowerMode(value)))),
       const Card(child: ListTile(
         leading: Icon(Icons.bluetooth), title: Text('Preferred transport'),
         subtitle: Text('Bluetooth LE'), trailing: Text('BLE'))),

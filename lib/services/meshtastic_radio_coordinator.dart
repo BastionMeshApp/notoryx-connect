@@ -88,7 +88,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   StreamSubscription<Uint8List>? _meshToolsSubscription;
   StreamSubscription<Uint8List>? _waypointSubscription;
   static const _sharePreferenceKey = 'bastion.share_phone_location';
+  static const _lowPowerPreferenceKey = 'bastion.low_power_mode';
   bool _sharePhoneLocation = false;
+  bool _lowPowerMode = false;
   BastionPhonePositionSharer? _sharer;
   String? _locationShareProblem;
   late final AppLifecycleListener _lifecycle;
@@ -240,6 +242,29 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   String? get locationShareProblem => _locationShareProblem;
   DateTime? get lastPhonePositionSent => _sharer?.lastSentAt;
 
+  /// Whether phone location sharing uses balanced accuracy and fewer updates.
+  bool get lowPowerMode => _lowPowerMode;
+
+  Future<void> setLowPowerMode(bool enabled) async {
+    if (enabled == _lowPowerMode) return;
+    _lowPowerMode = enabled;
+    notifyListeners();
+    try {
+      await SharedPreferencesAsync().setBool(_lowPowerPreferenceKey, enabled);
+    } catch (_) {
+      // Preference storage is best effort.
+    }
+    await _restartSharing();
+  }
+
+  /// Restarts a running share so it picks up the current power mode.
+  Future<void> _restartSharing() async {
+    if (_sharer == null) return;
+    await _sharer?.stop();
+    _sharer = null;
+    await _startSharing();
+  }
+
   Future<void> setSharePhoneLocation(bool enabled) async {
     _sharePhoneLocation = enabled;
     _locationShareProblem = null;
@@ -260,9 +285,17 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
 
   Future<void> _loadSharePreference() async {
     try {
+      final preferences = SharedPreferencesAsync();
       _sharePhoneLocation =
-          await SharedPreferencesAsync().getBool(_sharePreferenceKey) ?? false;
+          await preferences.getBool(_sharePreferenceKey) ?? false;
+      final lowPower =
+          await preferences.getBool(_lowPowerPreferenceKey) ?? false;
       notifyListeners();
+      if (lowPower != _lowPowerMode) {
+        _lowPowerMode = lowPower;
+        notifyListeners();
+        await _restartSharing();
+      }
     } catch (_) {
       // Default stays off.
     }
@@ -282,6 +315,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
       source: _location,
       send: session.send,
       localNodeNum: nodeNum,
+      lowPower: _lowPowerMode,
     );
     _sharer = sharer;
     _locationShareProblem = await sharer.start();
