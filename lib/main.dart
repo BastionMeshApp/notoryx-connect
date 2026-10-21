@@ -443,6 +443,18 @@ class _ChatsPageState extends State<BastionChatsPage> {
                 ? 'Live Meshtastic messaging is ready.'
                 : 'Messages can be queued offline and send automatically when the radio is connected.',
           ),
+          if (widget.radio.messageStorageProblem case final problem?)
+            Card(
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: ListTile(
+                leading: Icon(Icons.sd_card_alert_outlined,
+                  color: Theme.of(context).colorScheme.onErrorContainer),
+                title: Text('Message storage problem',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+                subtitle: Text(problem,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer)),
+              ),
+            ),
           const SizedBox(height: 12),
           Row(children: [
             Expanded(child: _Stat(
