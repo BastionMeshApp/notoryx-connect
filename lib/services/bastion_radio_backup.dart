@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cryptography/cryptography.dart';
+import '../app_version.dart';
 import '../generated/meshtastic/admin.pb.dart';
 import '../generated/meshtastic/channel.pb.dart';
 import '../generated/meshtastic/config.pb.dart';
@@ -59,7 +60,7 @@ class RadioBackupSnapshot {
       'firmware': firmware, 'nodeNum': nodeNum});
     final hash = await Sha256().hash(utf8.encode(payload));
     return jsonEncode({'format': 'bastion-radio-settings', 'formatVersion': 1,
-      'schemaVersion': 1, 'appVersion': '0.1.1+2',
+      'schemaVersion': 1, 'appVersion': bastionAppVersion,
       'exportedAtUtc': createdAt.toUtc().toIso8601String(),
       'payloadSha256': base64Encode(hash.bytes), 'payload': payload});
   }
