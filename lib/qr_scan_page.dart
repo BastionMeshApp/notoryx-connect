@@ -58,7 +58,7 @@ class _QrScanPageState extends State<QrScanPage> {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     error.errorCode == MobileScannerErrorCode.permissionDenied
-                        ? 'Camera permission is needed to scan. Allow it for Bastion in Android settings, or paste the link instead.'
+                        ? 'Camera permission is needed to scan. Allow it for NOTORYX Connect in Android settings, or paste the link instead.'
                         : 'Camera unavailable: ${error.errorDetails?.message ?? error.errorCode.name}',
                     textAlign: TextAlign.center,
                   ),

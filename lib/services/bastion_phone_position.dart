@@ -46,7 +46,7 @@ class GeolocatorLocationSource implements PhoneLocationSource {
     return switch (permission) {
       LocationPermission.always || LocationPermission.whileInUse => null,
       LocationPermission.deniedForever =>
-        'Location permission is blocked. Allow it for Bastion in Android settings.',
+        'Location permission is blocked. Allow it for NOTORYX Connect in Android settings.',
       _ => 'Location permission was not granted.',
     };
   }

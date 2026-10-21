@@ -43,9 +43,30 @@ class MeshtasticMessagingService {
   bool _flushing = false;
   bool _started = false;
   bool _botEnabled = false;
-  String _botReply =
-      'Bastion is monitoring the mesh. I will reply when available.';
+  String _botReply = defaultAwayReply;
   int? localNodeNum;
+
+  /// Away reply used when the user has not written their own.
+  static const defaultAwayReply =
+      'NOTORYX Connect is monitoring the mesh. I will reply when available.';
+
+  /// Sent over the air ahead of every bot reply.
+  static const botPrefix = 'NOTORYX:';
+
+  /// Whether [text] is a bot reply from this app, including older Bastion
+  /// builds, so two bots never answer each other.
+  static bool isBotReply(String text) {
+    final lower = text.trim().toLowerCase();
+    return lower.startsWith('notoryx:') || lower.startsWith('bastion:');
+  }
+
+  /// The over-the-air reply to [text] (a command or anything else).
+  static String botResponse(String text, String awayReply) =>
+      switch (text.trim().toLowerCase()) {
+        '!help' => '$botPrefix commands !help !status',
+        '!status' => '$botPrefix online • radio READY',
+        _ => '$botPrefix $awayReply',
+      };
 
   Stream<MeshtasticTextMessage> get incoming => _incoming.stream;
   Stream<void> get changes => _changes.stream;
@@ -76,9 +97,7 @@ class MeshtasticMessagingService {
     int? nodeNum,
   }) {
     _botEnabled = enabled;
-    _botReply = reply.trim().isEmpty
-        ? 'Bastion is monitoring the mesh. I will reply when available.'
-        : reply.trim();
+    _botReply = reply.trim().isEmpty ? defaultAwayReply : reply.trim();
     if (nodeNum != null) localNodeNum = nodeNum;
     _notify();
   }
@@ -256,7 +275,7 @@ class MeshtasticMessagingService {
 
     final text = message.text.trim();
     final lower = text.toLowerCase();
-    if (lower.startsWith('bastion:')) return;
+    if (isBotReply(text)) return;
 
     final directToUs = message.to == ownNode;
     if (!directToUs && message.to != MeshtasticTextCodec.broadcastNode) return;
@@ -268,11 +287,7 @@ class MeshtasticMessagingService {
     // A permission/persistence wait may outlive the connected session.
     if (!_botEnabled || !connection.isReady || localNodeNum != ownNode) return;
 
-    final response = switch (lower) {
-      '!help' => 'Bastion: commands !help !status',
-      '!status' => 'Bastion: online • radio READY',
-      _ => 'Bastion: $_botReply',
-    };
+    final response = botResponse(text, _botReply);
     try {
       await sendText(text: response, destination: message.from, channel: message.channel);
       botProblem = null;

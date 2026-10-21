@@ -25,7 +25,7 @@ class BastionForegroundService implements BastionBackgroundKeeper {
   Future<void> keepAlive({required String radioName, required bool reconnecting}) async {
     if (!_supported) return;
     final title = reconnecting ? 'Reconnecting to $radioName…' : 'Connected to $radioName';
-    const text = 'Bastion keeps the radio link open in the background.';
+    const text = 'NOTORYX Connect keeps the radio link open in the background.';
     try {
       if (await FlutterForegroundTask.isRunningService) {
         await FlutterForegroundTask.updateService(notificationTitle: title, notificationText: text);
@@ -76,7 +76,7 @@ class BastionForegroundService implements BastionBackgroundKeeper {
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'bastion_radio_link',
         channelName: 'Radio connection',
-        channelDescription: 'Shown while Bastion keeps a radio connected.',
+        channelDescription: 'Shown while NOTORYX Connect keeps a radio connected.',
         onlyAlertOnce: true,
       ),
       iosNotificationOptions: const IOSNotificationOptions(showNotification: false),
