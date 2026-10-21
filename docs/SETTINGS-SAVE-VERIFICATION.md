@@ -15,8 +15,16 @@ blocks the write.
 Automated tests cover the comparator, defaults, nested channel key bytes, unrelated
 normalization, single-write ordering, identity changes and timeout. Editor tests
 check verified success and ACK-without-matching-value, including reload without
-another write. This applies to editor saves; bulk channel-link imports retain their
-separate transaction flow and need their own readback improvement.
+another write.
+
+Bulk channel-link imports (QR, camera or pasted link) follow the same rule in
+`BastionChannelImport`: read all 8 slots (and LoRa when replacing) first, write once
+in one transaction, wait for the same radio, then compare a fresh read of every
+written slot and the LoRa config with `matchesChanges`. An interrupted write, a
+reconnect to a different radio, a reconnect timeout or a mismatched slot is reported
+as "not verified"; nothing is resent automatically, and the import screen blocks a
+second attempt until it is reopened. Refusals before any write (no radio, too few
+free slots) say nothing was written.
 
 ## Physical acceptance needed
 

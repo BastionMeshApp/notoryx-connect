@@ -19,6 +19,7 @@ import '../generated/meshtastic/telemetry.pb.dart';
 import 'bastion_admin_packet_codec.dart';
 import 'bastion_radio_backup.dart';
 import 'bastion_background_service.dart';
+import 'bastion_channel_import.dart';
 import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
 import 'bastion_phone_position.dart';
@@ -48,7 +49,8 @@ import 'meshtastic_text_codec.dart';
 import 'meshtastic_traceroute.dart';
 
 /// Owns one verified Meshtastic radio session and exposes it to the UI.
-class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGateway {
+class MeshtasticRadioCoordinator extends ChangeNotifier
+    implements RadioBackupGateway, ChannelImportGateway {
   MeshtasticRadioCoordinator({
     BastionBackgroundKeeper? background,
     BastionMessageAlerts? alerts,
@@ -818,71 +820,20 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     return ChannelSet(settings: settings, loraConfig: lora);
   }
 
-  /// Applies a shared channel set.
-  ///
-  /// [replace] overwrites all 8 slots and the LoRa config, as the official
-  /// apps do for a plain link. Otherwise the link's channels go into free
-  /// slots, skipping ones already present, and LoRa is left unchanged.
-  /// Returns the number of channels written.
-  Future<int> applyChannelSet(ChannelSet set, {required bool replace}) async {
-    final admin = _requireAdmin();
-    if (replace) {
-      await admin.editTransaction(() async {
-        for (var i = 0; i < 8; i++) {
-          await admin.setChannel(
-            i < set.settings.length
-                ? Channel(
-                    index: i,
-                    role: i == 0
-                        ? Channel_Role.PRIMARY
-                        : Channel_Role.SECONDARY,
-                    settings: set.settings[i],
-                  )
-                : Channel(index: i, role: Channel_Role.DISABLED),
-          );
-        }
-        if (set.hasLoraConfig())
-          await admin.setConfig(Config(lora: set.loraConfig));
-      });
-      return set.settings.length;
-    }
-    final existing = [for (var i = 0; i < 8; i++) await admin.getChannel(i)];
-    bool present(ChannelSettings s) => existing.any(
-      (c) =>
-          c.role != Channel_Role.DISABLED &&
-          c.settings.name == s.name &&
-          _sameBytes(c.settings.psk, s.psk),
-    );
-    final toAdd = set.settings.where((s) => !present(s)).toList();
-    final free = existing
-        .where((c) => c.index != 0 && c.role == Channel_Role.DISABLED)
-        .toList();
-    if (toAdd.length > free.length) {
-      throw StateError(
-        'Only ${free.length} free channel slots; the link has ${toAdd.length} new channels.',
-      );
-    }
-    if (toAdd.isEmpty) return 0;
-    await admin.editTransaction(() async {
-      for (var i = 0; i < toAdd.length; i++) {
-        await admin.setChannel(
-          Channel(
-            index: free[i].index,
-            role: Channel_Role.SECONDARY,
-            settings: toAdd[i],
-          ),
-        );
-      }
-    });
-    return toAdd.length;
-  }
+  /// Applies a shared channel set and confirms it with a fresh read from
+  /// the same radio; see [BastionChannelImport.apply].
+  Future<int> applyChannelSet(ChannelSet set, {required bool replace}) =>
+      BastionChannelImport(this).apply(set, replace: replace);
 
-  static bool _sameBytes(List<int> a, List<int> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+  @override
+  Future<void> writeChannelImport(List<Channel> channels, Config? lora) async {
+    final admin = _requireAdmin();
+    await admin.editTransaction(() async {
+      for (final channel in channels) {
+        await admin.setChannel(channel);
+      }
+      if (lora != null) await admin.setConfig(lora);
+    });
   }
 
   /// Asks [nodeNum] to send its position. The reply updates [nodes].
