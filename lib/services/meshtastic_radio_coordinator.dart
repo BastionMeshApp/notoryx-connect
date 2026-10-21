@@ -19,6 +19,7 @@ import '../generated/meshtastic/telemetry.pb.dart';
 import 'bastion_admin_packet_codec.dart';
 import 'bastion_radio_backup.dart';
 import 'bastion_background_service.dart';
+import 'bastion_channel_import.dart';
 import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
 import 'bastion_phone_position.dart';
@@ -48,7 +49,8 @@ import 'meshtastic_text_codec.dart';
 import 'meshtastic_traceroute.dart';
 
 /// Owns one verified Meshtastic radio session and exposes it to the UI.
-class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGateway {
+class MeshtasticRadioCoordinator extends ChangeNotifier
+    implements RadioBackupGateway, ChannelImportGateway {
   MeshtasticRadioCoordinator({
     BastionBackgroundKeeper? background,
     BastionMessageAlerts? alerts,
@@ -88,7 +90,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   StreamSubscription<Uint8List>? _meshToolsSubscription;
   StreamSubscription<Uint8List>? _waypointSubscription;
   static const _sharePreferenceKey = 'bastion.share_phone_location';
+  static const _lowPowerPreferenceKey = 'bastion.low_power_mode';
   bool _sharePhoneLocation = false;
+  bool _lowPowerMode = false;
   BastionPhonePositionSharer? _sharer;
   String? _locationShareProblem;
   late final AppLifecycleListener _lifecycle;
@@ -240,6 +244,29 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
   String? get locationShareProblem => _locationShareProblem;
   DateTime? get lastPhonePositionSent => _sharer?.lastSentAt;
 
+  /// Whether phone location sharing uses balanced accuracy and fewer updates.
+  bool get lowPowerMode => _lowPowerMode;
+
+  Future<void> setLowPowerMode(bool enabled) async {
+    if (enabled == _lowPowerMode) return;
+    _lowPowerMode = enabled;
+    notifyListeners();
+    try {
+      await SharedPreferencesAsync().setBool(_lowPowerPreferenceKey, enabled);
+    } catch (_) {
+      // Preference storage is best effort.
+    }
+    await _restartSharing();
+  }
+
+  /// Restarts a running share so it picks up the current power mode.
+  Future<void> _restartSharing() async {
+    if (_sharer == null) return;
+    await _sharer?.stop();
+    _sharer = null;
+    await _startSharing();
+  }
+
   Future<void> setSharePhoneLocation(bool enabled) async {
     _sharePhoneLocation = enabled;
     _locationShareProblem = null;
@@ -260,9 +287,17 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
 
   Future<void> _loadSharePreference() async {
     try {
+      final preferences = SharedPreferencesAsync();
       _sharePhoneLocation =
-          await SharedPreferencesAsync().getBool(_sharePreferenceKey) ?? false;
+          await preferences.getBool(_sharePreferenceKey) ?? false;
+      final lowPower =
+          await preferences.getBool(_lowPowerPreferenceKey) ?? false;
       notifyListeners();
+      if (lowPower != _lowPowerMode) {
+        _lowPowerMode = lowPower;
+        notifyListeners();
+        await _restartSharing();
+      }
     } catch (_) {
       // Default stays off.
     }
@@ -282,6 +317,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
       source: _location,
       send: session.send,
       localNodeNum: nodeNum,
+      lowPower: _lowPowerMode,
     );
     _sharer = sharer;
     _locationShareProblem = await sharer.start();
@@ -784,71 +820,20 @@ class MeshtasticRadioCoordinator extends ChangeNotifier implements RadioBackupGa
     return ChannelSet(settings: settings, loraConfig: lora);
   }
 
-  /// Applies a shared channel set.
-  ///
-  /// [replace] overwrites all 8 slots and the LoRa config, as the official
-  /// apps do for a plain link. Otherwise the link's channels go into free
-  /// slots, skipping ones already present, and LoRa is left unchanged.
-  /// Returns the number of channels written.
-  Future<int> applyChannelSet(ChannelSet set, {required bool replace}) async {
-    final admin = _requireAdmin();
-    if (replace) {
-      await admin.editTransaction(() async {
-        for (var i = 0; i < 8; i++) {
-          await admin.setChannel(
-            i < set.settings.length
-                ? Channel(
-                    index: i,
-                    role: i == 0
-                        ? Channel_Role.PRIMARY
-                        : Channel_Role.SECONDARY,
-                    settings: set.settings[i],
-                  )
-                : Channel(index: i, role: Channel_Role.DISABLED),
-          );
-        }
-        if (set.hasLoraConfig())
-          await admin.setConfig(Config(lora: set.loraConfig));
-      });
-      return set.settings.length;
-    }
-    final existing = [for (var i = 0; i < 8; i++) await admin.getChannel(i)];
-    bool present(ChannelSettings s) => existing.any(
-      (c) =>
-          c.role != Channel_Role.DISABLED &&
-          c.settings.name == s.name &&
-          _sameBytes(c.settings.psk, s.psk),
-    );
-    final toAdd = set.settings.where((s) => !present(s)).toList();
-    final free = existing
-        .where((c) => c.index != 0 && c.role == Channel_Role.DISABLED)
-        .toList();
-    if (toAdd.length > free.length) {
-      throw StateError(
-        'Only ${free.length} free channel slots; the link has ${toAdd.length} new channels.',
-      );
-    }
-    if (toAdd.isEmpty) return 0;
-    await admin.editTransaction(() async {
-      for (var i = 0; i < toAdd.length; i++) {
-        await admin.setChannel(
-          Channel(
-            index: free[i].index,
-            role: Channel_Role.SECONDARY,
-            settings: toAdd[i],
-          ),
-        );
-      }
-    });
-    return toAdd.length;
-  }
+  /// Applies a shared channel set and confirms it with a fresh read from
+  /// the same radio; see [BastionChannelImport.apply].
+  Future<int> applyChannelSet(ChannelSet set, {required bool replace}) =>
+      BastionChannelImport(this).apply(set, replace: replace);
 
-  static bool _sameBytes(List<int> a, List<int> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
+  @override
+  Future<void> writeChannelImport(List<Channel> channels, Config? lora) async {
+    final admin = _requireAdmin();
+    await admin.editTransaction(() async {
+      for (final channel in channels) {
+        await admin.setChannel(channel);
+      }
+      if (lora != null) await admin.setConfig(lora);
+    });
   }
 
   /// Asks [nodeNum] to send its position. The reply updates [nodes].

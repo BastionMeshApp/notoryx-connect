@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'generated/meshtastic/apponly.pb.dart';
 import 'qr_scan_page.dart';
+import 'services/bastion_channel_import.dart';
 import 'services/meshtastic_channel_url.dart';
 import 'services/meshtastic_radio_coordinator.dart';
 
@@ -98,6 +99,11 @@ class _ChannelImportPageState extends State<ChannelImportPage> {
   String? _error;
   bool _replace = false;
   bool _saving = false;
+  String? _importProblem;
+
+  /// Set after an import that may have changed the radio but was not
+  /// verified; blocks a second write until the user checks the radio.
+  bool _importUncertain = false;
 
   @override
   void dispose() {
@@ -145,17 +151,25 @@ class _ChannelImportPageState extends State<ChannelImportPage> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    setState(() => _saving = true);
+    setState(() { _saving = true; _importProblem = null; });
     try {
       final count = await widget.radio.applyChannelSet(set, replace: _replace);
       messenger.showSnackBar(SnackBar(content: Text(count == 0
           ? 'All channels from the link are already on the radio.'
-          : '$count channel${count == 1 ? '' : 's'} written to radio.')));
+          : '$count channel${count == 1 ? '' : 's'} written and verified from radio.')));
       navigator.pop();
+    } on ChannelImportException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _importProblem = error.radioMayHaveChanged
+            ? 'Import not verified: ${error.message}\nNothing will be resent automatically.'
+            : 'Import refused: ${error.message}';
+        _importUncertain = error.radioMayHaveChanged;
+      });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _saving = false);
-      messenger.showSnackBar(SnackBar(content: Text('Import failed: $error')));
+      setState(() { _saving = false; _importProblem = 'Import failed: $error'; });
     }
   }
 
@@ -218,8 +232,12 @@ class _ChannelImportPageState extends State<ChannelImportPage> {
               onSelectionChanged: (v) => setState(() => _replace = v.single),
             ),
             const SizedBox(height: 12),
+            if (_importProblem != null) ...[
+              Text(_importProblem!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              const SizedBox(height: 12),
+            ],
             FilledButton(
-              onPressed: _saving || !widget.radio.canAdminister ? null : _apply,
+              onPressed: _saving || _importUncertain || !widget.radio.canAdminister ? null : _apply,
               child: _saving
                   ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Apply to radio'),

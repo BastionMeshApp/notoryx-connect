@@ -12,7 +12,7 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 - [x] Draft node-name editor, validation, owner payload encoding, local admin packet transport helper, and fresh NodeInfo readback helper
 - [x] Transport-independent bounded reconnect supervisor and tests
 - [x] Confirm ADMIN_APP schema and firmware-specific session authentication against official firmware — generated from `meshtastic/protobufs` v2.8.1; session passkey handled; owner and channel writes verified on firmware 2.7.16
-- [x] Admin responses, negative acknowledgments, timeouts and verified editor saves — `MeshtasticAdminSession` handles responses and transactions; PR #51 adds fresh same-radio readback and PR #52 preserves drafts/submitted snapshots. Bulk channel imports retain a separate transaction flow; see [save verification](SETTINGS-SAVE-VERIFICATION.md).
+- [x] Admin responses, negative acknowledgments, timeouts and verified editor saves — `MeshtasticAdminSession` handles responses and transactions; PR #51 adds fresh same-radio readback and PR #52 preserves drafts/submitted snapshots. Bulk channel-link imports use the same fresh readback; see [save verification](SETTINGS-SAVE-VERIFICATION.md).
 - [x] Enable Save only when authenticated, connected, and explicitly confirmed
 - [x] Integrate reconnect supervisor into actual BLE lifecycle; respect manual disconnect and Android Bluetooth state — integrated and respects manual disconnect; Android Bluetooth off/on waiting and recovery are implemented
 - [x] Add Android foreground service and notification permission flow for background connectivity

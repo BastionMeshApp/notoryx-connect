@@ -1,5 +1,7 @@
 # NOTORYX Connect
 
+> **NOTORYX rebrand in progress:** This project is transitioning to **NOTORYX Connect**, part of the **NOTORYX** off-grid communications family. **No Towers. No Limits.** Existing releases, package identifiers and documentation may still use Bastion until migration is tested. This project remains independent of the underlying radio protocol projects.
+
 **No Towers. No Limits.**
 
 **NOTORYX Connect** is an independent Android field-mesh application. It interoperates with devices running Meshtastic® firmware while maintaining its own name, icon, interface, and project identity.

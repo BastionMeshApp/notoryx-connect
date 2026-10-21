@@ -11,12 +11,16 @@ class _FakeSource implements PhoneLocationSource {
 
   final String? problem;
   final fixes = StreamController<PhoneFix>.broadcast();
+  final watchedLowPower = <bool>[];
 
   @override
   Future<String?> ensureAccess() async => problem;
 
   @override
-  Stream<PhoneFix> watch() => fixes.stream;
+  Stream<PhoneFix> watch({bool lowPower = false}) {
+    watchedLowPower.add(lowPower);
+    return fixes.stream;
+  }
 }
 
 PhoneFix fix(double lat, double lon, int minute, {int second = 0}) => PhoneFix(
@@ -76,5 +80,47 @@ void main() {
     );
     expect(await blocked.start(), 'Location permission was not granted.');
     expect(blocked.isRunning, isFalse);
+  });
+
+  group('low-power field mode', () {
+    late BastionPhonePositionSharer lowPower;
+    late _FakeSource source;
+
+    setUp(() {
+      source = _FakeSource();
+      lowPower = BastionPhonePositionSharer(
+        source: source,
+        send: (bytes) async => sent.add(bytes),
+        localNodeNum: 0x1234,
+        lowPower: true,
+      );
+    });
+
+    test('asks the location source for low-power fixes', () async {
+      await lowPower.start();
+      expect(source.watchedLowPower, [true]);
+      await lowPower.stop();
+      await sharer.start();
+      await sharer.stop();
+    });
+
+    test('throttles stationary fixes to one per 15 minutes', () async {
+      await lowPower.handleFix(fix(35.5, -83.25, 0));
+      await lowPower.handleFix(fix(35.5, -83.25, 5));
+      await lowPower.handleFix(fix(35.5, -83.25, 14));
+      expect(sent, hasLength(1));
+      await lowPower.handleFix(fix(35.5, -83.25, 15));
+      expect(sent, hasLength(2));
+    });
+
+    test('needs 200 m and 2 minutes before sending early', () async {
+      await lowPower.handleFix(fix(35.5, -83.25, 0));
+      await lowPower.handleFix(fix(35.501, -83.25, 3));
+      expect(sent, hasLength(1), reason: '~111 m is under 200 m');
+      await lowPower.handleFix(fix(35.503, -83.25, 4));
+      expect(sent, hasLength(2), reason: '~333 m after 4 minutes');
+      await lowPower.handleFix(fix(35.506, -83.25, 5));
+      expect(sent, hasLength(2), reason: '~333 m but only 1 minute later');
+    });
   });
 }

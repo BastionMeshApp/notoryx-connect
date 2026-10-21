@@ -28,7 +28,7 @@ candidate on the T1000-E and authorization to release. Its
 [signed build](https://github.com/charlottemeshtastic/Bastion-Meshtastic/actions/runs/38292447353)
 passed 174 app tests. This later evidence supersedes the earlier pending-candidate
 status; it does not establish a pass for a second radio or every scenario below. Bulk channel-link imports
-retain their separate transaction flow. Backup restore performs its own readback verification.
+now verify with a fresh same-radio readback (see [save verification](SETTINGS-SAVE-VERIFICATION.md)). Backup restore performs its own readback verification.
 
 The [v0.1.2-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.2-beta.1) also records owner confirmation that the stable-signed, obfuscated candidate installed, connected, sent a message and retained an incident after restart. Both release records are owner-reported evidence, not independent hardware certification.
 

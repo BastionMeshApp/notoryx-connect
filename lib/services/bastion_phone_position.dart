@@ -29,7 +29,8 @@ abstract interface class PhoneLocationSource {
   /// Returns null when location can be used, otherwise why not.
   Future<String?> ensureAccess();
 
-  Stream<PhoneFix> watch();
+  /// Streams fixes; [lowPower] trades accuracy and frequency for battery.
+  Stream<PhoneFix> watch({bool lowPower = false});
 }
 
 class GeolocatorLocationSource implements PhoneLocationSource {
@@ -51,10 +52,10 @@ class GeolocatorLocationSource implements PhoneLocationSource {
   }
 
   @override
-  Stream<PhoneFix> watch() => Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 25,
+  Stream<PhoneFix> watch({bool lowPower = false}) => Geolocator.getPositionStream(
+        locationSettings: LocationSettings(
+          accuracy: lowPower ? LocationAccuracy.medium : LocationAccuracy.high,
+          distanceFilter: lowPower ? 100 : 25,
         ),
       ).map((p) => PhoneFix(
             latitude: p.latitude,
@@ -75,14 +76,22 @@ class BastionPhonePositionSharer {
     required this.source,
     required this.send,
     required this.localNodeNum,
-    this.minInterval = const Duration(minutes: 5),
-    this.movingInterval = const Duration(seconds: 30),
-    this.minDistanceMeters = 50,
-  });
+    this.lowPower = false,
+    Duration? minInterval,
+    Duration? movingInterval,
+    double? minDistanceMeters,
+  }) : minInterval = minInterval ??
+           (lowPower ? const Duration(minutes: 15) : const Duration(minutes: 5)),
+       movingInterval = movingInterval ??
+           (lowPower ? const Duration(minutes: 2) : const Duration(seconds: 30)),
+       minDistanceMeters = minDistanceMeters ?? (lowPower ? 200 : 50);
 
   final PhoneLocationSource source;
   final Future<void> Function(Uint8List toRadio) send;
   final int localNodeNum;
+
+  /// Low-power field mode: balanced GPS accuracy and fewer updates.
+  final bool lowPower;
   final Duration minInterval;
   final Duration movingInterval;
   final double minDistanceMeters;
@@ -98,7 +107,7 @@ class BastionPhonePositionSharer {
     if (_subscription != null) return null;
     final problem = await source.ensureAccess();
     if (problem != null) return problem;
-    _subscription = source.watch().listen(
+    _subscription = source.watch(lowPower: lowPower).listen(
       (fix) => unawaited(handleFix(fix)),
       onError: (Object _) {},
     );
