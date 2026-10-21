@@ -20,8 +20,8 @@ jobs:
         with:
           flutter-version: '3.47.7'
           channel: stable
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Dependency status
         run: flutter pub outdated
       - name: Resolve dependencies and report advisories
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile

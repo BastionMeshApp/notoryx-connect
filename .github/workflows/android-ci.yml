@@ -28,7 +28,9 @@ jobs:
           channel: stable
       - name: Generate Android platform
         run: |
-          flutter create --platforms=android --org org.backcountrysignal --project-name bastion .
+          flutter create --no-pub --platforms=android --org org.backcountrysignal --project-name bastion .
+          # flutter create replaces pubspec.lock with a template; restore the committed one.
+          git checkout -- pubspec.lock
           # Flutter's default template test references MyApp, not BastionApp.
           rm -f test/widget_test.dart
       - name: Verify release signing preparation
@@ -37,7 +39,7 @@ jobs:
         run: python3 scripts/prepare_android.py
       - name: Install dependencies and icons
         run: |
-          flutter pub get
+          flutter pub get --enforce-lockfile
           dart run flutter_launcher_icons
       - name: Analyze and test
         run: |

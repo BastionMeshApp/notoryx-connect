@@ -77,14 +77,17 @@ Requirements:
 After cloning this repository:
 
 ```sh
-flutter create --platforms=android --org org.backcountrysignal --project-name bastion .
+flutter create --no-pub --platforms=android --org org.backcountrysignal --project-name bastion .
+git checkout -- pubspec.lock   # flutter create replaces it with a template
 python3 scripts/prepare_android.py
-flutter pub get
+flutter pub get --enforce-lockfile
 dart run flutter_launcher_icons
 flutter analyze
 flutter test
 flutter run
 ```
+
+Dependency versions are locked in the committed `pubspec.lock`, and CI runs `flutter pub get --enforce-lockfile`, so every build uses the same packages. To change a dependency, edit `pubspec.yaml`, run plain `flutter pub get`, and commit the updated `pubspec.lock`.
 
 ## Build validation
 

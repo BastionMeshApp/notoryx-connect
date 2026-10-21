@@ -27,10 +27,12 @@ jobs:
           cache: true
       - name: Generate Android project
         run: |
-          flutter create --platforms=android --org org.backcountrysignal --project-name bastion .
+          flutter create --no-pub --platforms=android --org org.backcountrysignal --project-name bastion .
+          # flutter create replaces pubspec.lock with a template; restore the committed one.
+          git checkout -- pubspec.lock
           rm -f test/widget_test.dart
           python3 scripts/prepare_android.py
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Generate app icons
         run: dart run flutter_launcher_icons
       - name: Validate source
