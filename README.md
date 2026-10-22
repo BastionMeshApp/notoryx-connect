@@ -105,7 +105,7 @@ A build should not be represented as production-ready until hardware testing, re
 
 ## Safety
 
-NOTORYX Connect may support field and emergency-communications workflows, but software and mesh radio links are not guaranteed emergency lifelines. Maintain appropriate backup communications and safety plans for the environment in which Bastion is used.
+NOTORYX Connect may support field and emergency-communications workflows, but software and mesh radio links are not guaranteed emergency lifelines. Maintain appropriate backup communications and safety plans for the environment in which NOTORYX is used.
 
 ## Contributing
 
