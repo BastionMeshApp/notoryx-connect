@@ -22,7 +22,7 @@ jobs:
           flutter-version: '3.47.7'
           channel: stable
           cache: true
-      - run: flutter pub get
+      - run: flutter pub get --enforce-lockfile
       - name: Run BLE and session regression tests
         run: |
           set -e

@@ -17,7 +17,7 @@ jobs:
           channel: stable
           cache: true
       - name: Prepare dependencies
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
       - name: Capture environment
         run: |
           mkdir -p diagnostics

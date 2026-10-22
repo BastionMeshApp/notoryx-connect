@@ -43,7 +43,7 @@ jobs:
           printf 'Generated from meshtastic/protobufs %s by protoc_plugin 25.1.0.\nDo not edit by hand; see .github/workflows/generate-protobufs.yml.\n\nThe source definitions are licensed GPL-3.0 by the Meshtastic project; see LICENSE and README.md.\n' "$version" > lib/generated/README.md
       - name: Verify generated code compiles
         run: |
-          flutter pub get
+          flutter pub get --enforce-lockfile
           dart analyze --no-fatal-warnings lib/generated
       - name: Commit generated code
         run: |
