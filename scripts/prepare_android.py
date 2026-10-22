@@ -1,4 +1,5 @@
 # Run after flutter create to add BLE permissions and app label.
+import re
 from pathlib import Path
 p=Path('android/app/src/main/AndroidManifest.xml')
 s=p.read_text()
@@ -28,9 +29,16 @@ if 'flutter_foreground_task.service.ForegroundService' not in s:
     s=s.replace('    </application>', service, 1)
 p.write_text(s)
 
-# flutter_local_notifications needs core library desugaring.
 g=Path('android/app/build.gradle.kts')
 gradle=g.read_text()
+
+# flutter create derives com.bastionmesh.bastion, which is NOTORYX Core's ID.
+gradle, n=re.subn(r'applicationId = "[^"]*"', 'applicationId = "com.bastionmesh.connect"', gradle)
+if n != 1:
+    raise SystemExit('Could not set applicationId in build.gradle.kts')
+g.write_text(gradle)
+
+# flutter_local_notifications needs core library desugaring.
 if 'isCoreLibraryDesugaringEnabled' not in gradle:
     gradle=gradle.replace('    compileOptions {\n', '    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n', 1)
     gradle=gradle.replace('\nflutter {', '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n\nflutter {', 1)

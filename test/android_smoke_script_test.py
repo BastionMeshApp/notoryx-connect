@@ -14,7 +14,7 @@ case = os.environ['BASTION_SMOKE_CASE']
 if args[0] == 'install':
     sys.exit(42 if case == 'install_failure' else 0)
 if args[:4] == ['shell', 'pm', 'list', 'packages']:
-    print('package:org.backcountrysignal.bastion')
+    print('package:com.bastionmesh.connect')
 elif args[:3] == ['shell', 'am', 'start']:
     print('Status: timeout')
 elif args[:2] == ['shell', 'pidof']:
@@ -26,7 +26,7 @@ elif args[0] == 'logcat' and args[-1] == '-d':
         assert '--pid=12345' in args
         print('FATAL EXCEPTION: main' if case == 'crash' else 'App is alive')
     elif case != 'never_displayed':
-        print('ActivityTaskManager: Displayed org.backcountrysignal.bastion/.MainActivity: +15s')
+        print('ActivityTaskManager: Displayed com.bastionmesh.connect/.MainActivity: +15s')
 elif args[0] == 'exec-out':
     print('screenshot fixture')
 '''

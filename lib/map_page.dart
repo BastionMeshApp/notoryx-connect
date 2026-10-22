@@ -102,7 +102,7 @@ class _MapPageState extends State<MapPage> {
                 children: [
                   TileLayer(
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'org.backcountrysignal.bastion',
+                    userAgentPackageName: 'com.bastionmesh.connect',
                     maxNativeZoom: 19,
                   ),
                   if (_showLinks) PolylineLayer(polylines: _links(placed)),

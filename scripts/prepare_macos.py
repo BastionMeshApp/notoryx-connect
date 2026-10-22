@@ -10,6 +10,10 @@ RUNNER = Path('macos/Runner')
 config = RUNNER / 'Configs/AppInfo.xcconfig'
 text = config.read_text()
 text = re.sub(r'^PRODUCT_NAME = .*$', 'PRODUCT_NAME = NOTORYX Connect', text, flags=re.M)
+text, count = re.subn(r'^PRODUCT_BUNDLE_IDENTIFIER = .*$',
+                      'PRODUCT_BUNDLE_IDENTIFIER = com.bastionmesh.connect', text, flags=re.M)
+if count != 1:
+    raise SystemExit('Could not set PRODUCT_BUNDLE_IDENTIFIER in AppInfo.xcconfig')
 text = re.sub(r'^PRODUCT_COPYRIGHT = .*$',
               'PRODUCT_COPYRIGHT = NOTORYX Connect. Meshtastic® is a registered trademark of Meshtastic LLC.',
               text, flags=re.M)

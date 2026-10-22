@@ -43,7 +43,6 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 - [ ] Network health scores and explainable recommendations
 - [x] Local field observation history and CSV export
 - [ ] Validated dead-zone predictions
-- [ ] Optional BackCountrySignal integration with opt-in sharing
 
 ## Also delivered outside the milestones
 - Every config section and module editable through a generated settings form

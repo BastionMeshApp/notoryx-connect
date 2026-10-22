@@ -5,7 +5,7 @@ Everything needed in Play Console, with recommended answers. Recommended answers
 ## 1. Before the first upload (Owner)
 - [ ] Play Console developer account, identity verification, and (for a new personal account) the closed-testing requirement Google currently applies before production.
 - [ ] Create the app: name **NOTORYX Connect**, default language English (US), App, Free.
-- [ ] Enroll in **Play App Signing**. Upload the AAB from the `NOTORYX Signed Release Candidate` workflow; its key becomes the **upload key** (see [signing and recovery](SIGNING-AND-RECOVERY.md)). Package `org.backcountrysignal.bastion` is permanent once uploaded.
+- [ ] Enroll in **Play App Signing**. Upload the AAB from the `NOTORYX Signed Release Candidate` workflow; its key becomes the **upload key** (see [signing and recovery](SIGNING-AND-RECOVERY.md)). Package `com.bastionmesh.connect` is permanent once uploaded.
 - [ ] Fill in the placeholders in [PRIVACY-POLICY.md](PRIVACY-POLICY.md) (`[DATE…]`, `[PUBLISHER NAME]`, `[CONTACT EMAIL]`) and publish it at a stable public URL. A GitHub link to the file on `main` works; a page on your own site is better.
 - [ ] Trademark/domain clearance for "NOTORYX" (issue #55), and a re-check of the current [Meshtastic trademark rules](https://meshtastic.org/docs/legal/licensing-and-trademark/) ([TRADEMARKS.md](../TRADEMARKS.md) rule 8).
 

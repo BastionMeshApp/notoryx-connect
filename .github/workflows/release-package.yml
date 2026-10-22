@@ -28,7 +28,7 @@ jobs:
           cache: true
       - name: Prepare Android build
         run: |
-          flutter create --no-pub --platforms=android --org org.backcountrysignal --project-name bastion .
+          flutter create --no-pub --platforms=android --org com.bastionmesh --project-name bastion .
           # flutter create replaces pubspec.lock with a template; restore the committed one.
           git checkout -- pubspec.lock
           rm -f test/widget_test.dart

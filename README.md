@@ -56,7 +56,7 @@ Third-party Flutter/Dart dependencies remain subject to their respective license
 
 ## Android application
 
-NOTORYX Connect's Android display name is **NOTORYX Connect**. CI generates the Android project using the Dart project name `bastion` and organization `org.backcountrysignal`.
+NOTORYX Connect's Android display name is **NOTORYX Connect**. CI generates the Android project using the Dart project name `bastion` and organization `com.bastionmesh`; `scripts/prepare_android.py` sets the application ID to `com.bastionmesh.connect`.
 
 The NOTORYX Connect icon artwork is in `branding/`:
 
@@ -81,7 +81,7 @@ Requirements:
 After cloning this repository:
 
 ```sh
-flutter create --no-pub --platforms=android --org org.backcountrysignal --project-name bastion .
+flutter create --no-pub --platforms=android --org com.bastionmesh --project-name bastion .
 git checkout -- pubspec.lock   # flutter create replaces it with a template
 python3 scripts/prepare_android.py
 flutter pub get --enforce-lockfile
@@ -95,7 +95,7 @@ Dependency versions are locked in the committed `pubspec.lock`, and CI runs `flu
 
 ## macOS
 
-The **NOTORYX macOS Build** workflow (manual, also run on PRs that change the macOS build) generates the macOS project, applies `scripts/prepare_macos.py` (app name, Bluetooth/camera/location prompts, sandbox entitlements, Impeller off for Intel Macs) and builds a universal Intel + Apple silicon `NOTORYX Connect.app`, zipped as `NOTORYX-Connect-<version>-macOS-universal.zip`. It is ad-hoc signed, not notarized: on first launch, right-click the app and choose **Open**. Android-only features (background connection service, notifications) are inactive on macOS. Bundle ID `org.backcountrysignal.bastion` is separate from NOTORYX Core, so both apps can be installed side by side.
+The **NOTORYX macOS Build** workflow (manual, also run on PRs that change the macOS build) generates the macOS project, applies `scripts/prepare_macos.py` (app name, Bluetooth/camera/location prompts, sandbox entitlements, Impeller off for Intel Macs) and builds a universal Intel + Apple silicon `NOTORYX Connect.app`, zipped as `NOTORYX-Connect-<version>-macOS-universal.zip`. It is ad-hoc signed, not notarized: on first launch, right-click the app and choose **Open**. Android-only features (background connection service, notifications) are inactive on macOS. Bundle ID `com.bastionmesh.connect` is separate from NOTORYX Core (`com.bastionmesh.bastion`), so both apps can be installed side by side.
 
 ## Build validation
 

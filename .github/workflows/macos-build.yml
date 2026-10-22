@@ -38,7 +38,7 @@ jobs:
           channel: stable
       - name: Generate and prepare the macOS project
         run: |
-          flutter create --no-pub --platforms=macos --org org.backcountrysignal --project-name bastion .
+          flutter create --no-pub --platforms=macos --org com.bastionmesh --project-name bastion .
           # flutter create replaces pubspec.lock with a template; restore the committed one.
           git checkout -- pubspec.lock
           rm -f test/widget_test.dart
@@ -61,7 +61,7 @@ jobs:
           case "$ARCHS" in *arm64*) ;; *) echo "No Apple silicon (arm64) slice"; exit 1;; esac
           test "$(/usr/libexec/PlistBuddy -c 'Print :FLTEnableImpeller' "$APP/Contents/Info.plist")" = "false" \
             || { echo "FLTEnableImpeller must be false"; exit 1; }
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = "org.backcountrysignal.bastion"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = "com.bastionmesh.connect"
           find "$APP/Contents/Frameworks" -type f -perm -u+x | while read -r f; do
             if file "$f" | grep -q "Mach-O" && ! lipo -archs "$f" | grep -q x86_64; then
               echo "Missing x86_64 in $f"; exit 1

@@ -3,7 +3,7 @@ set -euo pipefail
 
 adb_bin=${BASTION_SMOKE_ADB:-adb}
 attempts=${BASTION_SMOKE_ATTEMPTS:-30}
-package=org.backcountrysignal.bastion
+package=com.bastionmesh.connect
 activity="$package/.MainActivity"
 
 # Preserve startup diagnostics even when launch or process checks fail.
