@@ -10,7 +10,7 @@
 
 ## Development status
 
-Bastion is under active development. BLE transport, PhoneAPI synchronization, NodeDB, channel/direct messaging, offline queueing, and field tooling are being developed and tested. Do not rely on a development build as the sole method of emergency communication.
+NOTORYX is under active development. BLE transport, PhoneAPI synchronization, NodeDB, channel/direct messaging, offline queueing, and field tooling are being developed and tested. Do not rely on a development build as the sole method of emergency communication.
 
 ## Mission
 
