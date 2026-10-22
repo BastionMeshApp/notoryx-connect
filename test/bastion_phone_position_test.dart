@@ -123,4 +123,43 @@ void main() {
       expect(sent, hasLength(2), reason: '~333 m but only 1 minute later');
     });
   });
+
+  group('location precision', () {
+    test('precise keeps the exact fix and altitude', () {
+      final p = Position.fromBuffer(ToRadio.fromBuffer(
+          BastionPhonePositionSharer.encode(fix(35.123456, -83.654321, 0), 1)).packet.decoded.payload);
+      expect(p.latitudeI, 351234560);
+      expect(p.altitude, 413);
+      expect(p.hasPrecisionBits(), isFalse);
+    });
+
+    test('approximate rounds before sending, drops altitude and sets precision', () {
+      for (final bits in [16, 14, 12]) {
+        final p = Position.fromBuffer(ToRadio.fromBuffer(BastionPhonePositionSharer.encode(
+            fix(35.123456, -83.654321, 0), 1, precisionBits: bits)).packet.decoded.payload);
+        final step = 1 << (32 - bits);
+        expect(p.precisionBits, bits);
+        expect(p.hasAltitude(), isFalse);
+        expect((p.latitudeI - 351234560).abs(), lessThanOrEqualTo(step ~/ 2), reason: '$bits bits');
+        expect((p.longitudeI + 836543210).abs(), lessThanOrEqualTo(step ~/ 2), reason: '$bits bits');
+        expect(p.latitudeI, isNot(351234560));
+      }
+    });
+
+    test('coarsening matches Meshtastic: keep leading bits, centre the cell', () {
+      expect(BastionPhonePositionSharer.coarsen(351234560, 32), 351234560);
+      expect(BastionPhonePositionSharer.coarsen(351234560, 16), ((351234560 & 0xffff0000) + 0x8000));
+      final negative = BastionPhonePositionSharer.coarsen(-836543210, 16);
+      expect(negative, ((-836543210).toUnsigned(32) & 0xffff0000) + 0x8000 - (1 << 32));
+      expect(BastionPhonePositionSharer.coarsen(BastionPhonePositionSharer.coarsen(-836543210, 14), 14),
+          BastionPhonePositionSharer.coarsen(-836543210, 14), reason: 'stable once rounded');
+    });
+
+    test('the sharer sends at its configured precision', () async {
+      final coarse = BastionPhonePositionSharer(
+          source: _FakeSource(), send: (b) async => sent.add(b), localNodeNum: 1, precisionBits: 14);
+      await coarse.handleFix(fix(35.5, -83.25, 0));
+      expect(Position.fromBuffer(ToRadio.fromBuffer(sent.single).packet.decoded.payload).precisionBits, 14);
+    });
+  });
 }

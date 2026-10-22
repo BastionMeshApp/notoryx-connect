@@ -7,6 +7,7 @@ import 'services/bastion_field_log.dart';
 import 'services/bastion_bot_guard.dart';
 import 'services/bastion_preferences.dart';
 import 'phone_backup_page.dart';
+import 'privacy_page.dart';
 import 'radio_backup_page.dart';
 import 'services/bastion_message_search.dart';
 import 'mesh_tools_page.dart';
@@ -17,6 +18,7 @@ import 'traceroute_page.dart';
 import 'services/meshtastic_ble_discovery.dart';
 import 'services/meshtastic_connection_controller.dart';
 import 'services/bastion_field_alerts.dart';
+import 'services/bastion_phone_position.dart';
 import 'services/meshtastic_messaging_service.dart';
 import 'services/meshtastic_radio_coordinator.dart';
 
@@ -901,15 +903,28 @@ class _SettingsPage extends StatelessWidget {
                       : sent == null
                           ? 'On. Waiting for a GPS fix.'
                           : 'On. Last sent ${sent.toLocal().toString().substring(11, 16)}.');
-          return Card(child: SwitchListTile(
-            secondary: const Icon(Icons.share_location),
-            title: const Text('Share phone location with mesh'),
-            subtitle: Text('$status\nThe radio broadcasts it when it has no GPS of its own. '
-                'Updates every 5 min, or sooner when you move.'),
-            isThreeLine: true,
-            value: radio.sharePhoneLocation,
-            onChanged: (value) => radio.setSharePhoneLocation(value),
-          ));
+          return Card(child: Column(children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.share_location),
+              title: const Text('Share phone location with mesh'),
+              subtitle: Text('$status\nThe radio broadcasts it when it has no GPS of its own. '
+                  'Updates every 5 min, or sooner when you move.'),
+              isThreeLine: true,
+              value: radio.sharePhoneLocation,
+              onChanged: (value) => radio.setSharePhoneLocation(value),
+            ),
+            ListTile(
+              leading: const Icon(Icons.blur_on),
+              title: const Text('Location precision'),
+              subtitle: const Text('Approximate positions are rounded on this phone before they are sent'),
+              trailing: DropdownButton<int>(
+                value: radio.locationPrecision,
+                items: [for (final e in BastionPhonePositionSharer.precisionChoices.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value))],
+                onChanged: (v) { if (v != null) radio.setLocationPrecision(v); },
+              ),
+            ),
+          ]));
         },
       ),
       Card(child: ListTile(
@@ -927,6 +942,14 @@ class _SettingsPage extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => PhoneBackupPage(radio: radio))),
+      )),
+      Card(child: ListTile(
+        leading: const Icon(Icons.privacy_tip_outlined),
+        title: const Text('Privacy & data'),
+        subtitle: const Text('What is stored and sent; delete chat history or all phone data'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => PrivacyPage(radio: radio))),
       )),
       const _MapCacheCard(),
       AnimatedBuilder(
