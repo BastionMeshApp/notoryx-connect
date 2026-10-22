@@ -58,11 +58,15 @@ Third-party Flutter/Dart dependencies remain subject to their respective license
 
 NOTORYX Connect's Android display name is **NOTORYX Connect**. CI generates the Android project using the Dart project name `bastion` and organization `org.backcountrysignal`.
 
-The NOTORYX Connect application icon is located at:
+The NOTORYX Connect icon artwork is in `branding/`:
 
-```text
-branding/bastion-icon.png
-```
+| File | Use |
+|---|---|
+| `notoryx-icon-source.png` | Original artwork (1254 px) |
+| `notoryx-icon.png` | Launcher icon for older Android versions (1024 px) |
+| `notoryx-icon-foreground.png` | Adaptive icon foreground: the N mark on transparency, inside the safe zone, over `#101011` |
+
+Play Store graphics (512 px icon, 1024 × 500 feature graphic) are in `fastlane/metadata/android/en-US/images/`. `python3 tool/make_store_graphics.py` regenerates all of these from the source artwork (needs Pillow).
 
 The icon and NOTORYX Connect visual identity are independent artwork and must not incorporate the official Meshtastic logo unless a future use is separately authorized and complies with the then-current trademark rules.
 
