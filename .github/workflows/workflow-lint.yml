@@ -1,4 +1,4 @@
-name: Bastion Workflow Validation
+name: NOTORYX Workflow Validation
 on:
   push:
     paths:

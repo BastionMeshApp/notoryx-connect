@@ -1,4 +1,4 @@
-name: Bastion On-Demand Test APK
+name: NOTORYX On-Demand Test APK
 on:
   workflow_dispatch:
     inputs:
@@ -58,7 +58,7 @@ jobs:
       - name: Upload test package
         uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Test-APK-${{ github.run_number }}
+          name: NOTORYX-Test-APK-${{ github.run_number }}
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build-details.txt

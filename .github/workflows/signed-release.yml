@@ -1,4 +1,4 @@
-name: Bastion Signed Release Candidate
+name: NOTORYX Signed Release Candidate
 on:
   workflow_dispatch:
 permissions:
@@ -46,17 +46,21 @@ jobs:
       - name: Verify signature and package
         run: |
           mkdir -p build/signed-package
-          cp build/app/outputs/flutter-apk/app-release.apk build/signed-package/Bastion-Signed-RC.apk
-          cp build/app/outputs/bundle/release/app-release.aab build/signed-package/Bastion-Signed-RC.aab
+          # pubspec version 1.0.0+5 -> NOTORYX-Connect-1.0.0-5
+          VERSION=$(sed -n 's/^version: *\([^+]*\)+\(.*\)$/\1-\2/p' pubspec.yaml)
+          test -n "$VERSION"
+          NAME="NOTORYX-Connect-$VERSION"
+          cp build/app/outputs/flutter-apk/app-release.apk "build/signed-package/$NAME.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "build/signed-package/$NAME.aab"
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --verbose --print-certs build/signed-package/Bastion-Signed-RC.apk > build/signed-package/SIGNATURE.txt
-          python3 scripts/verify_release_package.py build/signed-package/Bastion-Signed-RC.apk build/signed-package/SIGNATURE.txt
-          jarsigner -verify build/signed-package/Bastion-Signed-RC.aab
-          (cd build/signed-package && sha256sum Bastion-Signed-RC.apk Bastion-Signed-RC.aab > SHA256SUMS.txt)
-          printf 'Commit: %s\nRun: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > build/signed-package/BUILD-INFO.txt
+          "$APKSIGNER" verify --verbose --print-certs "build/signed-package/$NAME.apk" > build/signed-package/SIGNATURE.txt
+          python3 scripts/verify_release_package.py "build/signed-package/$NAME.apk" build/signed-package/SIGNATURE.txt
+          jarsigner -verify "build/signed-package/$NAME.aab"
+          (cd build/signed-package && sha256sum "$NAME.apk" "$NAME.aab" > SHA256SUMS.txt)
+          printf 'Version: %s\nCommit: %s\nRun: %s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_RUN_ID" > build/signed-package/BUILD-INFO.txt
       - uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Signed-Candidate-${{ github.run_number }}
+          name: NOTORYX-Connect-Signed-Candidate-${{ github.run_number }}
           path: |
             build/signed-package/
             build/release-symbols/

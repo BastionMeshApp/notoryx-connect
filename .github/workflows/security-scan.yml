@@ -1,4 +1,4 @@
-name: Bastion Security and Secret Scan
+name: NOTORYX Security and Secret Scan
 on:
   push:
   pull_request:

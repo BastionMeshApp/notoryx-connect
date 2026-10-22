@@ -1,4 +1,4 @@
-name: Bastion Release Notes
+name: NOTORYX Release Notes
 on:
   workflow_dispatch:
   push:
@@ -16,10 +16,10 @@ jobs:
       - name: Generate changelog
         run: |
           mkdir -p release-notes
-          printf '# Bastion changes\n\nCommit: %s\n\n' "$GITHUB_SHA" > release-notes/CHANGES.md
+          printf '# NOTORYX Connect changes\n\nCommit: %s\n\n' "$GITHUB_SHA" > release-notes/CHANGES.md
           git log -n 50 --pretty=format:'- %h %s' >> release-notes/CHANGES.md
           cat release-notes/CHANGES.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Release-Notes
+          name: NOTORYX-Release-Notes
           path: release-notes/CHANGES.md

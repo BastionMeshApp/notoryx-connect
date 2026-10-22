@@ -1,11 +1,11 @@
-name: Bastion Release Candidate Package
+name: NOTORYX Release Candidate Package
 on:
   workflow_dispatch:
     inputs:
       release_label:
         description: 'Human-readable release candidate label'
         required: true
-        default: 'Bastion RC'
+        default: 'NOTORYX Connect RC'
         type: string
 permissions:
   contents: read
@@ -47,15 +47,15 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           mkdir -p release-package
-          cp build/app/outputs/flutter-apk/app-release.apk release-package/Bastion-RC-arm64.apk
-          sha256sum release-package/Bastion-RC-arm64.apk > release-package/SHA256SUMS.txt
+          cp build/app/outputs/flutter-apk/app-release.apk release-package/NOTORYX-Connect-RC-arm64.apk
+          sha256sum release-package/NOTORYX-Connect-RC-arm64.apk > release-package/SHA256SUMS.txt
           printf 'Release candidate: %s\nCommit: %s\nRun: %s\n' "$RELEASE_LABEL" "$COMMIT_SHA" "$GITHUB_RUN_ID" > release-package/BUILD-INFO.txt
           git log -n 20 --pretty=format:'- %h %s' > release-package/CHANGES.txt
           printf '\n' >> release-package/CHANGES.txt
       - name: Upload candidate bundle
         uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Release-Candidate-${{ github.run_number }}
+          name: NOTORYX-Release-Candidate-${{ github.run_number }}
           path: release-package/
           retention-days: 30
           if-no-files-found: error

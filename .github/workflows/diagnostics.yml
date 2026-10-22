@@ -1,4 +1,4 @@
-name: Bastion Diagnostic Report
+name: NOTORYX Diagnostic Report
 on:
   workflow_dispatch:
   schedule:
@@ -32,7 +32,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Diagnostics-${{ github.run_number }}
+          name: NOTORYX-Diagnostics-${{ github.run_number }}
           path: diagnostics/
           retention-days: 14
           if-no-files-found: warn

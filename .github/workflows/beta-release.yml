@@ -1,4 +1,4 @@
-name: Bastion Beta Release
+name: NOTORYX Beta Release
 on:
   workflow_dispatch:
     inputs:
@@ -41,13 +41,13 @@ jobs:
           BETA_LABEL: ${{ inputs.beta_label }}
         run: |
           mkdir -p beta
-          cp build/app/outputs/flutter-apk/app-release.apk beta/Bastion-Beta-arm64.apk
-          (cd beta && sha256sum Bastion-Beta-arm64.apk > SHA256SUMS.txt)
+          cp build/app/outputs/flutter-apk/app-release.apk beta/NOTORYX-Connect-Beta-arm64.apk
+          (cd beta && sha256sum NOTORYX-Connect-Beta-arm64.apk > SHA256SUMS.txt)
           git log -n 20 --pretty=format:'- %h %s' > beta/CHANGES.md
           printf '\nBeta label: %s\nCommit: %s\n' "$BETA_LABEL" "$GITHUB_SHA" > beta/BUILD-INFO.txt
       - uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Beta-${{ github.run_number }}
+          name: NOTORYX-Beta-${{ github.run_number }}
           path: beta/
           retention-days: 30
           if-no-files-found: error

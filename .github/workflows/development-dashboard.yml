@@ -1,4 +1,4 @@
-name: Bastion Development Dashboard
+name: NOTORYX Development Dashboard
 on:
   workflow_dispatch:
   schedule:
@@ -22,7 +22,7 @@ jobs:
           req=urllib.request.Request(url,headers={'Authorization':f"Bearer {os.environ['GH_TOKEN']}",'Accept':'application/vnd.github+json'})
           with urllib.request.urlopen(req,timeout=20) as response:
               runs=json.load(response)['workflow_runs']
-          lines=['# Bastion development dashboard','','| Workflow | Status | Commit |','|---|---|---|']
+          lines=['# NOTORYX Connect development dashboard','','| Workflow | Status | Commit |','|---|---|---|']
           for run in runs[:20]:
               lines.append(f"| {run['name'].replace('|','/')} | {run['conclusion'] or run['status']} | {run['head_sha'][:8]} |")
           report='\n'.join(lines)+'\n'
@@ -32,5 +32,5 @@ jobs:
           PY
       - uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Development-Dashboard
+          name: NOTORYX-Development-Dashboard
           path: bastion-dashboard.md
