@@ -77,6 +77,7 @@ class BastionPhonePositionSharer {
     required this.send,
     required this.localNodeNum,
     this.lowPower = false,
+    this.precisionBits = precise,
     Duration? minInterval,
     Duration? movingInterval,
     double? minDistanceMeters,
@@ -92,6 +93,16 @@ class BastionPhonePositionSharer {
 
   /// Low-power field mode: balanced GPS accuracy and fewer updates.
   final bool lowPower;
+
+  /// Meshtastic position precision: how many leading bits of each
+  /// coordinate are kept. [precise] (32) sends the exact fix.
+  final int precisionBits;
+
+  static const precise = 32;
+
+  /// Choices offered to the user, with the approximate size of the area the
+  /// position is rounded to (Meshtastic's table).
+  static const precisionChoices = {32: 'Precise', 16: 'About 360 m', 14: 'About 1.5 km', 12: 'About 6 km'};
   final Duration minInterval;
   final Duration movingInterval;
   final double minDistanceMeters;
@@ -126,24 +137,38 @@ class BastionPhonePositionSharer {
       if (!due) return;
     }
     _lastSent = fix;
-    await send(encode(fix, localNodeNum));
+    await send(encode(fix, localNodeNum, precisionBits: precisionBits));
   }
 
-  static Uint8List encode(PhoneFix fix, int localNodeNum) => ToRadio(
+  /// Encodes [fix] for the local radio. Below [precise], the coordinates are
+  /// rounded here, before they leave the phone, and altitude is left out.
+  static Uint8List encode(PhoneFix fix, int localNodeNum, {int precisionBits = precise}) {
+    final exact = precisionBits >= precise;
+    return ToRadio(
         packet: MeshPacket(
           to: localNodeNum,
           decoded: Data(
             portnum: PortNum.POSITION_APP,
             payload: Position(
-              latitudeI: (fix.latitude * 1e7).round(),
-              longitudeI: (fix.longitude * 1e7).round(),
-              altitude: fix.altitudeMeters?.round(),
+              latitudeI: coarsen((fix.latitude * 1e7).round(), precisionBits),
+              longitudeI: coarsen((fix.longitude * 1e7).round(), precisionBits),
+              altitude: exact ? fix.altitudeMeters?.round() : null,
               time: fix.time.millisecondsSinceEpoch ~/ 1000,
               locationSource: Position_LocSource.LOC_EXTERNAL,
+              precisionBits: exact ? null : precisionBits,
             ).writeToBuffer(),
           ),
         ),
       ).writeToBuffer();
+  }
+
+  /// Keeps the leading [bits] of a 32-bit coordinate and moves it to the
+  /// middle of the remaining range, as Meshtastic firmware does.
+  static int coarsen(int value, int bits) {
+    if (bits >= precise) return value;
+    final mask = (0xffffffff << (32 - bits)) & 0xffffffff;
+    return ((value.toUnsigned(32) & mask) + (1 << (31 - bits))).toUnsigned(32).toSigned(32);
+  }
 
   Future<void> stop() async {
     await _subscription?.cancel();

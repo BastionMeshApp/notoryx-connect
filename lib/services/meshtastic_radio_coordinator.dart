@@ -161,6 +161,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   StreamSubscription<Uint8List>? _meshToolsSubscription;
   StreamSubscription<Uint8List>? _waypointSubscription;
   static const _sharePreferenceKey = 'bastion.share_phone_location';
+  static const _precisionPreferenceKey = 'bastion.share_location_precision';
+  int _locationPrecision = BastionPhonePositionSharer.precise;
   static const _lowPowerPreferenceKey = 'bastion.low_power_mode';
   bool _sharePhoneLocation = false;
   bool _lowPowerMode = false;
@@ -348,6 +350,22 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     await _startSharing();
   }
 
+  /// Position precision bits for shared phone location; see
+  /// [BastionPhonePositionSharer.precisionChoices].
+  int get locationPrecision => _locationPrecision;
+
+  Future<void> setLocationPrecision(int bits) async {
+    if (!BastionPhonePositionSharer.precisionChoices.containsKey(bits) || bits == _locationPrecision) return;
+    _locationPrecision = bits;
+    notifyListeners();
+    try {
+      await SharedPreferencesAsync().setInt(_precisionPreferenceKey, bits);
+    } catch (_) {
+      // Preference storage is best effort.
+    }
+    await _restartSharing();
+  }
+
   Future<void> setSharePhoneLocation(bool enabled) async {
     _sharePhoneLocation = enabled;
     _locationShareProblem = null;
@@ -373,6 +391,13 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
           await preferences.getBool(_sharePreferenceKey) ?? false;
       final lowPower =
           await preferences.getBool(_lowPowerPreferenceKey) ?? false;
+      final precision = await preferences.getInt(_precisionPreferenceKey);
+      if (precision != null &&
+          BastionPhonePositionSharer.precisionChoices.containsKey(precision) &&
+          precision != _locationPrecision) {
+        _locationPrecision = precision;
+        await _restartSharing();
+      }
       notifyListeners();
       if (lowPower != _lowPowerMode) {
         _lowPowerMode = lowPower;
@@ -399,6 +424,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
       send: session.send,
       localNodeNum: nodeNum,
       lowPower: _lowPowerMode,
+      precisionBits: _locationPrecision,
     );
     _sharer = sharer;
     _locationShareProblem = await sharer.start();

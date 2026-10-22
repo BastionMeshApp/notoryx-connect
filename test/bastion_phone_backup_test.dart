@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:bastion/phone_backup_page.dart';
+import 'package:bastion/privacy_page.dart';
 import 'package:bastion/services/bastion_encrypted_backup.dart';
 import 'package:bastion/services/bastion_message_archive.dart';
 import 'package:bastion/services/bastion_phone_backup.dart';
@@ -114,5 +115,30 @@ void main() {
     await tester.tap(find.text('Restore from file'));
     await tester.pumpAndSettle();
     expect(find.text('Disconnect the radio before restoring phone data.'), findsOneWidget);
+  });
+
+  test('erase removes chats only, or every app item, never other apps', () async {
+    await seed();
+    expect(await BastionPhoneBackup().erase(everything: false), 2, reason: 'archive and last-radio pointer');
+    expect(await prefs.getString(BastionMessageArchive.radioKey(0xA1)), isNull);
+    expect(await prefs.getInt('bastion.comms.last_radio'), isNull);
+    expect(await prefs.getBool('bastion.low_power_mode'), isTrue);
+    expect(await BastionPhoneBackup().erase(everything: true), 2);
+    expect((await prefs.getKeys()).where((k) => k.startsWith('bastion.')), isEmpty);
+    expect(await prefs.getString('other.app.key'), 'not ours');
+  });
+
+  testWidgets('privacy page refuses to delete while a radio is connected', (tester) async {
+    await seed();
+    final radio = MeshtasticRadioCoordinator();
+    addTearDown(radio.dispose);
+    radio.connection.beginConnect('Field Radio');
+    await tester.pumpWidget(MaterialApp(home: PrivacyPage(radio: radio)));
+    expect(find.text('Sent off this phone'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Delete all phone data'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Delete all phone data'));
+    await tester.pumpAndSettle();
+    expect(find.text('Disconnect the radio before deleting phone data.'), findsOneWidget);
+    expect(await prefs.getBool('bastion.low_power_mode'), isTrue);
   });
 }

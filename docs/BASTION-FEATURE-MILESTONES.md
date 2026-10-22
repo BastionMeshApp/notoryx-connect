@@ -26,7 +26,7 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 ## Milestone B1 — maps, GPS, field operations
 - [x] Offline map tiles, location permissions, node positions, waypoints — viewed OpenStreetMap areas cached offline for a year (no bulk area downloads under the OSM tile policy)
 - [x] Check-in/assistance/all-clear templates with explicit review and delivery disclaimers; persisted incident logs and CSV export — see [field features](FIELD-FEATURES-AND-TESTING.md).
-- [ ] Privacy controls and battery-aware tracking — phone GPS sharing is opt-in and throttled, and low-power field mode lowers its GPS accuracy and update rate (#59); no wider privacy settings yet
+- [x] Privacy controls and battery-aware tracking — phone GPS sharing is opt-in and throttled; low-power field mode lowers its GPS accuracy and update rate (#59); shared location can be rounded on the phone (about 360 m / 1.5 km / 6 km); Settings → Privacy & data explains what is stored and sent and deletes chat history or all phone data
 
 ## Milestone B2 — bot and RF field tools
 - [x] Bot opt-in, command handling, anti-loop checks, quiet hours and persisted reply-attempt limits; selected-channel eligibility and fail-closed storage behavior

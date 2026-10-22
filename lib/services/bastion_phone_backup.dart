@@ -119,6 +119,21 @@ class BastionPhoneBackup {
     }
   }
 
+  static const chatPrefix = 'bastion.comms.';
+
+  /// Deletes chat history and offline queues for every radio, or with
+  /// [everything] all data this app stores in preferences. Returns how many
+  /// items were removed. Other apps' data is never touched.
+  Future<int> erase({required bool everything}) async {
+    final keys = (await _store.getKeys())
+        .where((k) => k.startsWith(everything ? prefix : chatPrefix))
+        .toList();
+    for (final key in keys) {
+      await _store.remove(key);
+    }
+    return keys.length;
+  }
+
   Future<void> _replace(Map<String, Object> values, Iterable<String> otherKeys) async {
     for (final key in otherKeys) {
       if (!values.containsKey(key)) await _store.remove(key);
