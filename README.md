@@ -105,4 +105,4 @@ Testing, bug reports, hardware compatibility reports, and feature ideas are welc
 
 ## Current completion and release gates
 
-See [release readiness](docs/RELEASE-READINESS.md) and [branch/PR triage](docs/BRANCH-AND-PR-TRIAGE.md). Encrypted radio backup/restore excludes device identity keys, session credentials and phone history. Signed candidates are built through the manual main-branch workflow; they are not automatically published.
+See [release readiness](docs/RELEASE-READINESS.md) and [branch/PR triage](docs/BRANCH-AND-PR-TRIAGE.md). Encrypted radio backup/restore excludes device identity keys, session credentials and phone history; the separate encrypted phone data backup covers chats, offline queues, NodeDex, waypoints, field records and settings. Signed candidates are built through the manual main-branch workflow; they are not automatically published.

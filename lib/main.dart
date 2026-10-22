@@ -6,6 +6,7 @@ import 'field_tools_page.dart';
 import 'services/bastion_field_log.dart';
 import 'services/bastion_bot_guard.dart';
 import 'services/bastion_preferences.dart';
+import 'phone_backup_page.dart';
 import 'radio_backup_page.dart';
 import 'services/bastion_message_search.dart';
 import 'mesh_tools_page.dart';
@@ -917,6 +918,14 @@ class _SettingsPage extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => RadioBackupPage(radio: radio))),
+      )),
+      Card(child: ListTile(
+        leading: const Icon(Icons.phone_android_outlined),
+        title: const Text('Phone data backup / restore'),
+        subtitle: const Text('Chats, NodeDex, waypoints, field records and settings, for moving to a new phone'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => PhoneBackupPage(radio: radio))),
       )),
       const _MapCacheCard(),
       AnimatedBuilder(

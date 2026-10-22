@@ -32,9 +32,11 @@ with a separate upload-key strategy; store-side setup is not completed here.
 Older test APKs use temporary debug certificates. A persistent certificate cannot
 transparently update those installations. Keep the existing app if Android rejects
 an update. Before any uninstall, save radio settings backups and copy incident/coverage
-CSV outside the app. Radio backups exclude phone chats, field logs and maps; there is
-no complete phone-state export/import in the current build. Do not promise lossless
-migration from a debug-signed installation. A spare phone can test the signed candidate
+CSV outside the app. Radio backups exclude phone chats, field logs and maps. Builds
+with **Settings → Phone data backup / restore** can export everything the app stores on
+the phone to an encrypted file and restore it on another installation; older
+debug-signed builds don't have it, so do not promise lossless migration from them.
+The viewed-map tile cache is not included and refills as maps are viewed. A spare phone can test the signed candidate
 without removing the current installation.
 
 After the first stable-signed installation, later APKs with the same package,

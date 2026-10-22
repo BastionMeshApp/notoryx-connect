@@ -74,7 +74,7 @@ class _RadioBackupPageState extends State<RadioBackupPage> {
           'Target: !${target.toRadixString(16)}. Replaces owner names, all 8 channel slots '
           'including their secret keys, ${snapshot.configs.length} configuration sections '
           'and ${snapshot.modules.length} modules. Device identity/security keys, '
-          'session credentials, phone chats and maps are not restored.\n\n'
+          'session credentials, phone chats and maps are not restored (use Phone data backup for those).\n\n'
           'Save a backup of the target first. The radio may reboot or lose mesh connectivity. '
           'A radio write cannot guarantee rollback after a power or connection failure.'),
       actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),

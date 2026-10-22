@@ -5,11 +5,19 @@ import 'package:cryptography/cryptography.dart';
 
 /// Authenticated, password-protected backups. Plaintext never reaches storage.
 class BastionEncryptedBackup {
+  /// [format] labels and authenticates the content, so one kind of backup
+  /// can never be decrypted as another. Defaults are the radio settings backup.
+  const BastionEncryptedBackup({
+    this.format = 'bastion-encrypted-radio-backup',
+    this.maxBytes = 1024 * 1024,
+  });
+
   static const iterations = 600000;
-  static const maxBytes = 1024 * 1024;
-  static const _format = 'bastion-encrypted-radio-backup';
-  static const _aad = 'bastion-encrypted-radio-backup:1';
-  final _cipher = AesGcm.with256bits();
+  final String format;
+  final int maxBytes;
+  String get _format => format;
+  String get _aad => '$format:1';
+  static final _cipher = AesGcm.with256bits();
 
   Future<SecretKey> _key(String password, List<int> salt) => Pbkdf2(
     macAlgorithm: Hmac.sha256(), iterations: iterations, bits: 256,
