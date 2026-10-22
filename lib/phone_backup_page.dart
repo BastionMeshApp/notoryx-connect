@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'services/app_exit.dart';
 import 'services/bastion_phone_backup.dart';
 import 'services/meshtastic_connection_controller.dart';
 import 'services/meshtastic_radio_coordinator.dart';
@@ -140,7 +140,7 @@ class _PhoneBackupPageState extends State<PhoneBackupPage> {
           'overwrites the restored data. Open it again to continue.'),
       actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Close app'))],
     ));
-    await SystemNavigator.pop();
+    await closeApp();
   });
 
   @override

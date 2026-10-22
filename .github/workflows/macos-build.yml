@@ -1,0 +1,96 @@
+name: NOTORYX macOS Build
+
+# Builds a universal (Intel x86_64 + Apple silicon) NOTORYX Connect.app. It is
+# ad-hoc signed, not notarized: the first launch needs right-click > Open, or
+# Open Anyway in System Settings > Privacy & Security.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Optional release tag to attach the zip to (e.g. v1.0.0). Leave empty for an artifact only.
+        required: false
+        default: ''
+  pull_request:
+    paths:
+      - 'scripts/prepare_macos.py'
+      - 'flutter_launcher_icons-macos.yaml'
+      - '.github/workflows/macos-build.yml'
+      - 'lib/services/app_exit.dart'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notoryx-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write  # only used to attach the zip to a release tag
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+      - name: Generate and prepare the macOS project
+        run: |
+          flutter create --no-pub --platforms=macos --org org.backcountrysignal --project-name bastion .
+          # flutter create replaces pubspec.lock with a template; restore the committed one.
+          git checkout -- pubspec.lock
+          rm -f test/widget_test.dart
+          python3 scripts/prepare_macos.py
+          flutter pub get --enforce-lockfile
+          dart run flutter_launcher_icons -f flutter_launcher_icons-macos.yaml
+      - name: Analyze and test
+        run: |
+          flutter analyze
+          flutter test
+      - name: Build universal macOS app
+        run: flutter build macos --release
+      - name: Check architectures and renderer
+        run: |
+          APP="build/macos/Build/Products/Release/NOTORYX Connect.app"
+          test -d "$APP"
+          ARCHS=$(lipo -archs "$APP/Contents/MacOS/NOTORYX Connect")
+          echo "Architectures: $ARCHS"
+          case "$ARCHS" in *x86_64*) ;; *) echo "No Intel (x86_64) slice"; exit 1;; esac
+          case "$ARCHS" in *arm64*) ;; *) echo "No Apple silicon (arm64) slice"; exit 1;; esac
+          test "$(/usr/libexec/PlistBuddy -c 'Print :FLTEnableImpeller' "$APP/Contents/Info.plist")" = "false" \
+            || { echo "FLTEnableImpeller must be false"; exit 1; }
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist")" = "org.backcountrysignal.bastion"
+          find "$APP/Contents/Frameworks" -type f -perm -u+x | while read -r f; do
+            if file "$f" | grep -q "Mach-O" && ! lipo -archs "$f" | grep -q x86_64; then
+              echo "Missing x86_64 in $f"; exit 1
+            fi
+          done
+      - name: Sign ad hoc and package
+        run: |
+          APP="build/macos/Build/Products/Release/NOTORYX Connect.app"
+          # Sign the bundled frameworks, then the app itself with its entitlements;
+          # a plain --deep re-sign would strip them (Bluetooth, network, camera…).
+          codesign --force --deep --sign - "$APP"
+          codesign --force --sign - --entitlements macos/Runner/Release.entitlements "$APP"
+          codesign --verify --deep --strict "$APP"
+          codesign -d --entitlements - "$APP" 2>/dev/null | tee /dev/stderr | grep -q "com.apple.security.device.bluetooth"
+          VERSION=$(sed -n 's/^version: *\([^+]*\)+\(.*\)$/\1-\2/p' pubspec.yaml)
+          test -n "$VERSION"
+          mkdir -p dist
+          ditto -c -k --keepParent "$APP" "dist/NOTORYX-Connect-$VERSION-macOS-universal.zip"
+          (cd dist && shasum -a 256 -- *.zip > SHA256SUMS-macOS.txt && cat SHA256SUMS-macOS.txt)
+          printf 'Version: %s\nCommit: %s\nRun: %s\n' "$VERSION" "$GITHUB_SHA" "$GITHUB_RUN_ID" > dist/BUILD-INFO-macOS.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: NOTORYX-Connect-macOS-${{ github.run_number }}
+          path: dist/
+          retention-days: 30
+          if-no-files-found: error
+      - name: Attach to release
+        if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: gh release upload "$TAG" dist/* --clobber

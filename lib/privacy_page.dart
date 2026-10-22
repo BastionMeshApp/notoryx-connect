@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import 'services/app_exit.dart';
 import 'services/bastion_phone_backup.dart';
 import 'services/bastion_tile_cache.dart';
 import 'services/meshtastic_connection_controller.dart';
@@ -73,7 +73,7 @@ class _PrivacyPageState extends State<PrivacyPage> {
       content: const Text('NOTORYX Connect will close now so nothing still in memory is saved again.'),
       actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Close app'))],
     ));
-    await SystemNavigator.pop();
+    await closeApp();
   }
 
   Widget _list(String title, List<String> items) => Card(child: Padding(
