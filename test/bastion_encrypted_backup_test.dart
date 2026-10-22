@@ -24,6 +24,6 @@ void main() {
     final codec = BastionEncryptedBackup();
     await expectLater(codec.decrypt('{}', 'password'), throwsFormatException);
     await expectLater(codec.encrypt('data', 'short'), throwsFormatException);
-    await expectLater(codec.decrypt('x' * (BastionEncryptedBackup.maxBytes * 2 + 1), 'password'), throwsFormatException);
+    await expectLater(codec.decrypt('x' * (codec.maxBytes * 2 + 1), 'password'), throwsFormatException);
   });
 }
