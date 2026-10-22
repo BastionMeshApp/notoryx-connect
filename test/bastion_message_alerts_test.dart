@@ -1,3 +1,4 @@
+import 'package:bastion/services/bastion_field_alerts.dart';
 import 'package:bastion/services/bastion_background_service.dart';
 import 'package:bastion/services/bastion_message_alerts.dart';
 import 'package:bastion/services/meshtastic_radio_coordinator.dart';
@@ -23,6 +24,9 @@ class _RecordingAlerts implements BastionMessageAlerts {
     required int channel,
   }) async =>
       shown.add('${isDirect ? 'DM' : 'ch$channel'} $sender: $text');
+
+  @override
+  Future<void> showFieldAlert(BastionFieldAlert alert) async => shown.add('alert ${alert.title}');
 }
 
 void main() {

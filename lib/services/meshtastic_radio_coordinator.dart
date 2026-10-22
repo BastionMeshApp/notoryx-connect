@@ -23,6 +23,7 @@ import 'bastion_channel_import.dart';
 import 'bastion_bluetooth_state.dart';
 import 'bastion_message_alerts.dart';
 import 'bastion_phone_position.dart';
+import 'bastion_field_alerts.dart';
 import 'bastion_field_log.dart';
 import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
@@ -71,6 +72,65 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     connection.addListener(_relayConnectionChange);
     _archive.addListener(notifyListeners);
     _archiveLoaded = _loadArchive();
+    unawaited(BastionAlertSettings.load().then((s) {
+      _alertSettings = s;
+      notifyListeners();
+    }));
+  }
+
+  final BastionFieldAlertEngine _fieldAlerts = BastionFieldAlertEngine();
+  Timer? _silenceTimer;
+  BastionAlertSettings _alertSettings = const BastionAlertSettings();
+
+  /// Local alerts for low battery, new nodes and favorites that go quiet.
+  BastionAlertSettings get alertSettings => _alertSettings;
+
+  /// Applies [settings] now; returns false if they could not be saved.
+  Future<bool> setAlertSettings(BastionAlertSettings settings) async {
+    _alertSettings = settings;
+    notifyListeners();
+    return settings.save();
+  }
+
+  String _nodeName(int num) {
+    for (final node in _nodes) {
+      if (node.num == num) return node.displayName;
+    }
+    for (final record in _nodeDex.records) {
+      if (record.num == num) return record.displayName;
+    }
+    return '!${num.toRadixString(16).padLeft(8, '0')}';
+  }
+
+  bool _isFavorite(int num) => _nodeDex.records.any((r) => r.num == num && r.favorite);
+
+  void _raise(BastionFieldAlert? alert) {
+    if (alert != null) unawaited(_alerts.showFieldAlert(alert));
+  }
+
+  void _startFieldAlerts(int localNode) {
+    _fieldAlerts.startSession(localNode);
+    for (final t in _deviceTelemetry.values) {
+      _raise(_fieldAlerts.battery(t.from, t.batteryLevel, _nodeName(t.from),
+          favorite: _isFavorite(t.from), settings: _alertSettings));
+    }
+    _silenceTimer?.cancel();
+    _silenceTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!isReady) return;
+      final favorites = [
+        for (final r in _nodeDex.records)
+          if (r.favorite)
+            (num: r.num, name: _nodeName(r.num),
+              lastHeard: _nodes.where((n) => n.num == r.num).firstOrNull?.lastHeard),
+      ];
+      _fieldAlerts.checkSilence(favorites, _alertSettings).forEach(_raise);
+    });
+  }
+
+  void _stopFieldAlerts() {
+    _silenceTimer?.cancel();
+    _silenceTimer = null;
+    _fieldAlerts.endSession();
   }
 
   final MeshtasticConnectionController connection =
@@ -580,6 +640,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
                 (!BastionRadioPolicy.firmwareAtLeast28(_firmwareVersion) ||
                     telemetry.batteryIsFreshSince(_connectedAt))) {
               _deviceTelemetry[telemetry.from] = telemetry;
+              _raise(_fieldAlerts.battery(telemetry.from, telemetry.batteryLevel,
+                  _nodeName(telemetry.from), favorite: _isFavorite(telemetry.from),
+                  settings: _alertSettings));
               notifyListeners();
             }
             final packet = MeshtasticTextCodec.decodeMeshPacket(
@@ -628,6 +691,11 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
         notifyListeners();
       });
       _nodeDexSubscription = nodeDatabase.nodeUpdates.listen((node) {
+        if (connection.isReady) {
+          _raise(_fieldAlerts.nodeHeard(node.num, node.displayName,
+              knownBefore: _nodeDex.records.any((r) => r.num == node.num),
+              settings: _alertSettings));
+        }
         unawaited(_nodeDex.observe(node).then((_) => notifyListeners()));
       });
       _messageSubscription = messaging.changes.listen((_) {
@@ -656,6 +724,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
       }
       await messaging.flush();
       unawaited(_startSharing());
+      if (nodeNum != null && nodeNum != 0) _startFieldAlerts(nodeNum);
 
       _nodes = nodeDatabase.nodes;
       _syncMessageSnapshot(messaging);
@@ -1184,6 +1253,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   }
 
   Future<void> _shutdownSession({required bool resetConnection}) async {
+    _stopFieldAlerts();
     await _coverageLocation?.cancel();
     _coverageLocation = null;
     _coverageFix = null;

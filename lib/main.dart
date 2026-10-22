@@ -16,6 +16,7 @@ import 'services/bastion_tile_cache.dart';
 import 'traceroute_page.dart';
 import 'services/meshtastic_ble_discovery.dart';
 import 'services/meshtastic_connection_controller.dart';
+import 'services/bastion_field_alerts.dart';
 import 'services/meshtastic_messaging_service.dart';
 import 'services/meshtastic_radio_coordinator.dart';
 
@@ -930,6 +931,10 @@ class _SettingsPage extends StatelessWidget {
       const _MapCacheCard(),
       AnimatedBuilder(
         animation: radio,
+        builder: (context, _) => _FieldAlertsCard(radio: radio),
+      ),
+      AnimatedBuilder(
+        animation: radio,
         builder: (context, _) => Card(child: SwitchListTile(
           secondary: const Icon(Icons.battery_saver_outlined),
           title: const Text('Low-power field mode'),
@@ -1117,4 +1122,70 @@ class _MapCacheCardState extends State<_MapCacheCard> {
       );
     },
   ));
+}
+
+class _FieldAlertsCard extends StatelessWidget {
+  const _FieldAlertsCard({required this.radio});
+  final MeshtasticRadioCoordinator radio;
+
+  Future<void> _update(BuildContext context, BastionAlertSettings settings) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!await radio.setAlertSettings(settings)) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Alert settings apply now, but could not be saved.')));
+    }
+  }
+
+  static String _duration(Duration d) =>
+      d.inHours >= 1 ? '${d.inHours} h' : '${d.inMinutes} min';
+
+  @override
+  Widget build(BuildContext context) {
+    final s = radio.alertSettings;
+    return Card(child: ExpansionTile(
+      leading: const Icon(Icons.notifications_active_outlined),
+      title: const Text('Field alerts'),
+      subtitle: const Text('Phone notifications only; nothing is sent over the mesh'),
+      children: [
+        SwitchListTile(
+          title: const Text('Low battery'),
+          subtitle: Text('Your radio or a favorite reports ${s.batteryThreshold}% or less'),
+          value: s.lowBattery,
+          onChanged: (v) => _update(context, s.copyWith(lowBattery: v)),
+        ),
+        ListTile(
+          title: const Text('Battery threshold'),
+          enabled: s.lowBattery,
+          trailing: DropdownButton<int>(
+            value: s.batteryThreshold,
+            items: [for (final v in BastionAlertSettings.batteryChoices)
+              DropdownMenuItem(value: v, child: Text('$v%'))],
+            onChanged: s.lowBattery ? (v) => _update(context, s.copyWith(batteryThreshold: v)) : null,
+          ),
+        ),
+        SwitchListTile(
+          title: const Text('New node'),
+          subtitle: const Text('Your radio hears a node for the first time'),
+          value: s.newNode,
+          onChanged: (v) => _update(context, s.copyWith(newNode: v)),
+        ),
+        SwitchListTile(
+          title: const Text('Favorite goes quiet'),
+          subtitle: Text('A favorite is not heard for ${_duration(s.silence)} while connected'),
+          value: s.favoriteSilent,
+          onChanged: (v) => _update(context, s.copyWith(favoriteSilent: v)),
+        ),
+        ListTile(
+          title: const Text('Quiet after'),
+          enabled: s.favoriteSilent,
+          trailing: DropdownButton<Duration>(
+            value: s.silence,
+            items: [for (final v in BastionAlertSettings.silenceChoices)
+              DropdownMenuItem(value: v, child: Text(_duration(v)))],
+            onChanged: s.favoriteSilent ? (v) => _update(context, s.copyWith(silence: v)) : null,
+          ),
+        ),
+      ],
+    ));
+  }
 }
