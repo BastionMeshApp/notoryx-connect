@@ -70,9 +70,12 @@ jobs:
       - name: Sign ad hoc and package
         run: |
           APP="build/macos/Build/Products/Release/NOTORYX Connect.app"
+          # Sign the bundled frameworks, then the app itself with its entitlements;
+          # a plain --deep re-sign would strip them (Bluetooth, network, camera…).
           codesign --force --deep --sign - "$APP"
+          codesign --force --sign - --entitlements macos/Runner/Release.entitlements "$APP"
           codesign --verify --deep --strict "$APP"
-          codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "com.apple.security.device.bluetooth"
+          codesign -d --entitlements - "$APP" 2>/dev/null | tee /dev/stderr | grep -q "com.apple.security.device.bluetooth"
           VERSION=$(sed -n 's/^version: *\([^+]*\)+\(.*\)$/\1-\2/p' pubspec.yaml)
           test -n "$VERSION"
           mkdir -p dist
