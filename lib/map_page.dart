@@ -17,7 +17,8 @@ class MapPage extends StatefulWidget {
 
   final MeshtasticRadioCoordinator radio;
 
-  static const accent = Color(0xFFC7A24A);
+  /// NOTORYX orange; markers sit on light map tiles in both themes.
+  static const accent = Color(0xFFFC7202);
 
   @override
   State<MapPage> createState() => _MapPageState();

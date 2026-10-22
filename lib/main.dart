@@ -37,12 +37,26 @@ Future<void> main() async {
 
 class BastionApp extends StatelessWidget {
   const BastionApp({super.key});
-  static const signal = Color(0xFFC7A24A);
+  /// NOTORYX orange from the app icon; the accent in the dark theme.
+  static const signal = Color(0xFFFC7202);
+
+  /// The same hue, darkened so text and icons keep 4.5:1 contrast on the
+  /// light theme's surfaces (#FC7202 is only about 2.6:1 there).
+  static const signalOnLight = Color(0xFFAC4E01);
   static const panel = Color(0xFF151713);
 
+  /// The accent for the current theme.
+  static Color accentOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? signal : signalOnLight;
+
   static ThemeData appearance(Brightness brightness) {
-    final colors = ColorScheme.fromSeed(seedColor: signal, brightness: brightness);
     final dark = brightness == Brightness.dark;
+    // Text on the accent: black on bright orange (7.6:1), white on the
+    // deeper light-theme orange (5.5:1).
+    final colors = ColorScheme.fromSeed(seedColor: signal, brightness: brightness).copyWith(
+      primary: dark ? signal : signalOnLight,
+      onPrimary: dark ? Colors.black : Colors.white,
+    );
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -292,7 +306,7 @@ class _NodesPage extends StatelessWidget {
                         width: 10,
                         height: 12 + (snr + 20).clamp(0, 40).toDouble(),
                         decoration: BoxDecoration(
-                          color: BastionApp.signal,
+                          color: BastionApp.accentOf(context),
                           borderRadius: BorderRadius.circular(3),
                         ),
                       )),
@@ -316,7 +330,7 @@ class _NodesPage extends StatelessWidget {
           for (final record in radio.nodeDex)
             Card(child: ListTile(
               leading: Icon(record.favorite ? Icons.star : Icons.person_pin_circle_outlined,
-                color: record.favorite ? BastionApp.signal : null),
+                color: record.favorite ? BastionApp.accentOf(context) : null),
               title: Text(record.displayName),
               subtitle: Text('Encounters: ${record.encounters} • Last seen: ${record.lastSeen.toLocal()}'
                 '\n${record.note.isEmpty ? 'Tap to add field notes' : record.note}'),
@@ -608,8 +622,8 @@ class _ChatsPageState extends State<BastionChatsPage> {
           ],
           const SizedBox(height: 10),
           Card(child: SwitchListTile(
-            secondary: const Icon(Icons.smart_toy_outlined,
-              color: BastionApp.signal),
+            secondary: Icon(Icons.smart_toy_outlined,
+              color: BastionApp.accentOf(context)),
             title: const Text('BOT MODE',
               style: TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(widget.radio.botProblem ?? (widget.botMode
@@ -619,7 +633,7 @@ class _ChatsPageState extends State<BastionChatsPage> {
             onChanged: widget.onBotModeChanged,
           )),
           Card(child: ExpansionTile(
-            leading: const Icon(Icons.tune, color: BastionApp.signal),
+            leading: Icon(Icons.tune, color: BastionApp.accentOf(context)),
             title: const Text('BOT RESPONSE',
               style: TextStyle(fontWeight: FontWeight.bold)),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -700,7 +714,7 @@ class _ToolsPageState extends State<_ToolsPage> {
           builder: (_) => FieldToolsPage(radio: widget.radio))),
       )),
       Card(child: ExpansionTile(
-        leading: const Icon(Icons.battery_charging_full, color: BastionApp.signal),
+        leading: Icon(Icons.battery_charging_full, color: BastionApp.accentOf(context)),
         title: const Text('BATTERY RUNTIME', style: TextStyle(fontWeight: FontWeight.bold)),
         subtitle: const Text('Estimate runtime from capacity and average current'),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -719,12 +733,12 @@ class _ToolsPageState extends State<_ToolsPage> {
           if (runtime != null)
             Padding(padding: const EdgeInsets.only(top: 12),
               child: Text('Estimated runtime: ${runtime!.toStringAsFixed(1)} hours',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
-                  color: BastionApp.signal))),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold,
+                  color: BastionApp.accentOf(context)))),
         ],
       )),
-      const Card(child: ExpansionTile(
-        leading: Icon(Icons.signal_cellular_alt, color: BastionApp.signal),
+      Card(child: ExpansionTile(
+        leading: Icon(Icons.signal_cellular_alt, color: BastionApp.accentOf(context)),
         title: Text('RSSI FIELD REFERENCE', style: TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('Quick Bluetooth signal-strength guide'),
         childrenPadding: EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -738,7 +752,7 @@ class _ToolsPageState extends State<_ToolsPage> {
       )),
       Card(child: ExpansionTile(
         initiallyExpanded: true,
-        leading: const Icon(Icons.checklist, color: BastionApp.signal),
+        leading: Icon(Icons.checklist, color: BastionApp.accentOf(context)),
         title: const Text('DEPLOYMENT CHECKLIST', style: TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('${checked.length}/${checklist.length} ready'),
         children: [
@@ -752,7 +766,7 @@ class _ToolsPageState extends State<_ToolsPage> {
         ],
       )),
       Card(child: ListTile(
-        leading: const Icon(Icons.bluetooth_searching, color: BastionApp.signal),
+        leading: Icon(Icons.bluetooth_searching, color: BastionApp.accentOf(context)),
         title: const Text('RADIO SCANNER', style: TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text('${widget.discovery.results.length} BLE devices currently discovered'),
         trailing: const Icon(Icons.chevron_right),
@@ -797,7 +811,7 @@ class _ToolsPageState extends State<_ToolsPage> {
           final readings = widget.radio.deviceTelemetry.entries.toList()
             ..sort((a, b) => a.key.compareTo(b.key));
           return Card(child: ExpansionTile(
-            leading: const Icon(Icons.monitor_heart_outlined, color: BastionApp.signal),
+            leading: Icon(Icons.monitor_heart_outlined, color: BastionApp.accentOf(context)),
             title: const Text('LIVE TELEMETRY',
               style: TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(widget.radio.isReady
@@ -849,7 +863,7 @@ class _SettingsPage extends StatelessWidget {
         animation: radio,
         builder: (context, _) => Card(child: ExpansionTile(
           initiallyExpanded: true,
-          leading: const Icon(Icons.settings_input_antenna, color: BastionApp.signal),
+          leading: Icon(Icons.settings_input_antenna, color: BastionApp.accentOf(context)),
           title: const Text('RADIO CONFIGURATION',
             style: TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(radio.canAdminister
@@ -970,10 +984,10 @@ class _SettingsPage extends StatelessWidget {
       const Card(child: ListTile(
         leading: Icon(Icons.bluetooth), title: Text('Preferred transport'),
         subtitle: Text('Bluetooth LE'), trailing: Text('BLE'))),
-      const Card(child: ListTile(
+      Card(child: ListTile(
         leading: Icon(Icons.security_outlined), title: Text('Safety mode'),
         subtitle: Text('No unverified device is treated as a mesh node'),
-        trailing: Icon(Icons.verified_user_outlined, color: BastionApp.signal))),
+        trailing: Icon(Icons.verified_user_outlined, color: BastionApp.accentOf(context)))),
       Card(child: ListTile(
         leading: const Icon(Icons.description_outlined), title: const Text('Third-party licenses'),
         onTap: () => showLicensePage(context: context, applicationName: 'NOTORYX Connect'),
@@ -1007,9 +1021,9 @@ class _Header extends StatelessWidget {
     padding: const EdgeInsets.all(18),
     decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: BastionApp.signal.withValues(alpha: .4))),
+      border: Border.all(color: BastionApp.accentOf(context).withValues(alpha: .4))),
     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Icon(icon, color: BastionApp.signal, size: 30),
+      Icon(icon, color: BastionApp.accentOf(context), size: 30),
       const SizedBox(width: 14),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900,
@@ -1089,8 +1103,8 @@ class _ReferenceRow extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 5),
     child: Row(children: [
       SizedBox(width: 80, child: Text(value,
-        style: const TextStyle(fontWeight: FontWeight.bold,
-          color: BastionApp.signal))),
+        style: TextStyle(fontWeight: FontWeight.bold,
+          color: BastionApp.accentOf(context)))),
       Expanded(child: Text(label)),
     ]),
   );
