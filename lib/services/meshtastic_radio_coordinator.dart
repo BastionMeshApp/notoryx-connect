@@ -68,13 +68,21 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
           _inForeground = state == AppLifecycleState.resumed,
     );
     connection.addListener(_relayConnectionChange);
-    unawaited(_loadArchive());
+    _archive.addListener(notifyListeners);
+    _archiveLoaded = _loadArchive();
     unawaited(_loadNodeDex());
   }
 
   final MeshtasticConnectionController connection =
       MeshtasticConnectionController();
   final BastionMessageArchive _archive = BastionMessageArchive();
+
+  /// Completes once stored history is in [_archivedMessages]; offline sends
+  /// wait for it so their save can't replace history that hasn't loaded yet.
+  late final Future<void> _archiveLoaded;
+
+  /// Why chat history or the offline queue may not be stored; null when fine.
+  String? get messageStorageProblem => _archive.problem;
   final BastionNodeDex _nodeDex = BastionNodeDex();
   final BastionBackgroundKeeper _background;
   final BastionMessageAlerts _alerts;
@@ -985,6 +993,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
       channel: channel,
       packetId: packetId,
     );
+    await _archiveLoaded;
     _archivedPending = [..._archivedPending, pending];
     _archivedMessages = [
       ..._archivedMessages,
@@ -1198,6 +1207,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     _reconnect.cancel();
     unawaited(_background.release());
     connection.removeListener(_relayConnectionChange);
+    _archive.removeListener(notifyListeners);
     unawaited(_shutdownSession(resetConnection: true));
     super.dispose();
   }
