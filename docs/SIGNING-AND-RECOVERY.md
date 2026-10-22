@@ -43,8 +43,9 @@ hardware before each release; do not instruct users to uninstall routinely.
 
 ## Release acceptance
 
-The owner tested the previous development-signed 0.1.2+3 APK on the T1000-E. The newly
-signed and obfuscated candidate must be installed and exercised before its GitHub draft
-is published. Record source hash, APK checksum, certificate, device/firmware, startup,
+v0.1.2-beta.1 and v0.1.3-beta.1 were each installed and exercised as exact signed
+candidates on the T1000-E before publication (owner-reported in their release notes).
+Every future signed and obfuscated candidate must be installed and exercised before its
+GitHub draft is published. Record source hash, APK checksum, certificate, device/firmware, startup,
 radio connection, messaging and saved field-record behavior after force-stop/relaunch.
 Attach the exact tested artifact and its symbols; do not rebuild after acceptance.

@@ -1,6 +1,6 @@
 # Bastion app feature development milestones
 
-Status reconciled 2026-10-20 against main `68abe898` and the v0.1.3-beta.1 release.
+Status reconciled 2026-10-21 against main `5291caa2` (after PRs #53–#63) and the v0.1.3-beta.1 release.
 
 Application baseline: `main`. Preserve `feature/bastion-beta`; see [release readiness](RELEASE-READINESS.md) for exact-artifact gates.
 
@@ -19,14 +19,14 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 - [ ] Physical radio tests on supported firmware and Android versions — passed on one radio (firmware 2.7.16); more firmware and Android versions still to cover
 
 ## Milestone A2 — messaging and node intelligence
-- [ ] Delivery-state correctness, offline queue reconciliation, channel and DM UX — routing ACK delivery states and per-node DM threads done; offline queue reconciliation not re-verified
+- [ ] Delivery-state correctness, offline queue reconciliation, channel and DM UX — routing ACK delivery states and per-node DM threads done; message storage failures are reported and no longer overwrite stored history (#62); queue reconciliation across restart, disconnect and radio switch still needs device verification
 - [x] Node favorites, notes, telemetry, signal history, traceroute and neighbors — favorites, notes, telemetry requests and traceroute (per-hop SNR) done; neighbor reports and map links are implemented
 - [ ] Protocol fixture tests and live radio verification — fixture tests cover admin, traceroute, channel links, nodes, positions and waypoints; live verification partial
 
 ## Milestone B1 — maps, GPS, field operations
 - [x] Offline map tiles, location permissions, node positions, waypoints — viewed OpenStreetMap areas cached offline for a year (no bulk area downloads under the OSM tile policy)
 - [x] Check-in/assistance/all-clear templates with explicit review and delivery disclaimers; persisted incident logs and CSV export — see [field features](FIELD-FEATURES-AND-TESTING.md).
-- [ ] Privacy controls and battery-aware tracking — phone GPS sharing is opt-in and throttled; no wider privacy settings yet
+- [ ] Privacy controls and battery-aware tracking — phone GPS sharing is opt-in and throttled, and low-power field mode lowers its GPS accuracy and update rate (#59); no wider privacy settings yet
 
 ## Milestone B2 — bot and RF field tools
 - [x] Bot opt-in, command handling, anti-loop checks, quiet hours and persisted reply-attempt limits; selected-channel eligibility and fail-closed storage behavior
@@ -48,6 +48,7 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 ## Also delivered outside the milestones
 - Every config section and module editable through a generated settings form
 - Channel sharing as `meshtastic.org/e/#` links and QR codes, including camera scanning
+- Reproducible builds: committed `pubspec.lock`, enforced in every workflow (#63)
 
 ## Release gates
 - No claim of full official-app parity until every required feature is integrated and tested
@@ -58,10 +59,10 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 
 The owner reports earlier reliability items 1–3 completed. Hardware models/versions and test results were not supplied; retain independent-verification gates. At that time, main lacked automatic post-save readback; PR #51 subsequently added it. Chat now selects enabled radio channels and searches all retained history. At that time, production signing was prepared and signed-artifact QA was pending; later release evidence is recorded below. Play account setup remains open.
 
-## Current next steps — 2026-10-20
+## Current next steps — 2026-10-21
 
-1. Validate the repaired PR secret-scan read permissions, then update and validate the Dependabot PR (#53).
-2. Extend exact-signed-artifact testing to a second radio and more Android versions; include interrupted writes, QR round-trip, secondary-channel delivery and screen-off recovery.
-3. Reassess the PR #1 extraction list against delivered bot/coverage work before adapting remaining radio-scoped history, local alerts or map-pack import. Do not replace main with the alternate application.
+1. Finish the NOTORYX Connect rebrand (#55): user-visible text is done (#56, #57, #61); the launcher icon awaits approved artwork, and trademark/domain clearance is open. Package ID and signing stay unchanged.
+2. Extend exact-signed-artifact testing to a second radio and more Android versions; include interrupted writes, QR add/replace round-trip, secondary-channel delivery, low-power GPS sharing, message storage after restart and screen-off recovery.
+3. Adapt the remaining PR #1 candidates individually: radio-scoped history, local alerts, imported map packs. Bot limits and coverage observations are already on main; see the [PR #1 review](PR1-FEATURE-REVIEW.md). Do not replace main with the alternate application.
 
 The latest published beta is [v0.1.3-beta.1](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.3-beta.1). Its release notes record owner verification of the exact signed candidate on a T1000-E; this does not certify all devices or every acceptance scenario.

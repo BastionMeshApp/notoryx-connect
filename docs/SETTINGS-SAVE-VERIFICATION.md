@@ -1,4 +1,4 @@
-# Settings save verification — 0.1.3+4 candidate
+# Settings save verification
 
 Owner, LoRa, channel, device, position and generic config/module editors now write
 once, wait for the same local radio to be ready, perform a new admin read, and check
@@ -28,7 +28,7 @@ free slots) say nothing was written.
 
 ## Physical acceptance needed
 
-Use a stable-signed 0.1.3+4 candidate to update the stable 0.1.2+3 beta in place.
+Repeat on every stable-signed candidate, updating the previous stable beta in place.
 Do not use the automatically generated development-signed APK for that update.
 
 On the T1000-E:
@@ -41,5 +41,9 @@ On the T1000-E:
    no repeat write, and an explicit reload before continuing. Do not assume a failed
    confirmation means the radio rolled back.
 
-The existing v0.1.2-beta.1 release is unchanged. This candidate must pass physical
-save/reboot validation before a future release.
+5. Import a channel link with Add and with Replace all; expect "verified from radio"
+   only after the reconnect and fresh read.
+
+Editor-save verification first shipped in v0.1.3-beta.1, whose release notes record
+owner acceptance of the exact signed candidate on the T1000-E. Each new candidate must
+pass these physical save/reboot checks again before release.

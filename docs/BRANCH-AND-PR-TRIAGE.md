@@ -1,5 +1,9 @@
 # Branch and PR reconciliation — 2026-10-12
 
+**Status 2026-10-21:** this reconciliation is complete (PR #48). Main is the only
+baseline; `feature/bastion-v1-integration` is frozen at `68abe898` and no workflow
+targets it. The plan below is kept as history.
+
 Main is the application baseline. This maintenance change retains PR #47's settings
 fixes, encrypted backups, chat controls, signing preparation and emulator checks.
 The published v0.1.1-beta.1 tag and APK remain unchanged.
