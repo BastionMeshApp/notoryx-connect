@@ -2,7 +2,7 @@ name: Bastion APK Size Monitor
 on:
   push:
     branches:
-      - feature/bastion-v1-integration
+      - main
   workflow_dispatch:
 concurrency:
   group: bastion-${{ github.workflow }}-${{ github.ref }}

@@ -5,14 +5,20 @@ commit e920e36f90cc69120ff7973a81b112b2fdbdbeed, branch codex/local-automations.
 This identifies useful feature candidates; it does not claim they are integrated
 into main or hardware verified.
 
+**Status 2026-10-21:** candidates 2 and 4 are delivered on main through PR #49
+(`bastion_bot_guard.dart`, `bastion_field_log.dart`); do not port them again.
+Candidates 1, 3 and 5 remain. PR #1's head `e920e36f` now passes CI with 81 tests
+and builds an APK ([run 38156061289](https://github.com/charlottemeshtastic/Bastion-Meshtastic/actions/runs/38156061289)),
+so its description's "no APK" note is outdated.
+
 ## Recommended extraction order
 
 | Priority | Work worth adapting | Source in PR #1 | Main destination and required checks |
 |---|---|---|---|
 | 1 | Radio-specific chat/node history | lib/services/messaging/chat_history.dart; lib/services/node_archive.dart; lib/models/telemetry_sample.dart | Adapt bastion_message_archive.dart, bastion_nodedex.dart and coordinator queries. Preserve existing records until radio attribution is established; test radio switching, duplicates, failed writes and bounded retention. |
-| 2 | Persisted bot attempt limits and selected-channel commands | lib/services/bot/bot_engine.dart; bot_controller.dart | Adapt bastion_bot_rules.dart and meshtastic_messaging_service.dart to the main message model. Keep opt-in behavior, radio arming, sender validation, stale/duplicate/replayed packet suppression and channel-role checks. Port policy tests and verify actual-service wiring. |
+| 2 (done, #49) | Persisted bot attempt limits and selected-channel commands | lib/services/bot/bot_engine.dart; bot_controller.dart | Adapt bastion_bot_rules.dart and meshtastic_messaging_service.dart to the main message model. Keep opt-in behavior, radio arming, sender validation, stale/duplicate/replayed packet suppression and channel-role checks. Port policy tests and verify actual-service wiring. |
 | 3 | Local battery, new-node and silence alerts | lib/services/automations/automation_engine.dart; automation_controller.dart | Feed a small rules service from verified main coordinator/telemetry observations. Inject a clock; test one-alert-until-recovery, reconnect seeding and suppression while disconnected. Local alerts should not automatically transmit messages. |
-| 4 | Receiver-location/SNR/RSSI observations and CSV | lib/services/field/coverage.dart | Adapt mesh tools using existing GPS and telemetry boundaries. Preserve opt-in location, fresh/accurate fixes, connected-radio identity, MQTT exclusion, packet freshness and rate limits. Label observations accurately, without unverified coverage predictions. |
+| 4 (done, #49) | Receiver-location/SNR/RSSI observations and CSV | lib/services/field/coverage.dart | Adapt mesh tools using existing GPS and telemetry boundaries. Preserve opt-in location, fresh/accurate fixes, connected-radio identity, MQTT exclusion, packet freshness and rate limits. Label observations accurately, without unverified coverage predictions. |
 | 5 | User-imported offline map packs | lib/services/field/offline_maps.dart; android_support/FieldFiles.kt; lib/screens/map/offline_maps_page.dart | Adapt the picker/tile provider to bastion_tile_cache.dart and map_page.dart. Preserve attribution, ZIP path/size/tile bounds, staging and cancellation. Test interrupted/invalid import and recovery of the previous pack. |
 
 ## Concrete behavior worth retaining
