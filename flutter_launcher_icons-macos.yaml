@@ -1,0 +1,8 @@
+# macOS app icon, used by the NOTORYX macOS Build workflow:
+#   dart run flutter_launcher_icons -f flutter_launcher_icons-macos.yaml
+flutter_launcher_icons:
+  android: false
+  ios: false
+  macos:
+    generate: true
+    image_path: branding/notoryx-icon.png
