@@ -2,7 +2,7 @@
 .dart_tool/
 .flutter-plugins-dependencies
 build/
-android/
+/android/
 coverage/
 *.jks
 *.keystore

@@ -1,7 +1,7 @@
 name: bastion
 description: Independent field-mesh companion compatible with Meshtastic® firmware.
 publish_to: none
-version: 0.1.3+4
+version: 1.0.0+5
 
 environment:
   sdk: '>=3.12.0 <4.0.0'

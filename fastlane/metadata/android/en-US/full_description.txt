@@ -1,0 +1,36 @@
+NOTORYX Connect is an independent field app for LoRa mesh radios running Meshtastic® firmware. Connect your radio over Bluetooth and message, map and manage your mesh without cell towers or internet.
+
+MESSAGING
+• Channel and direct messages with delivery status
+• Messages queue while your radio is disconnected and send when it reconnects
+• Search your full message history, kept separately for each radio
+• Optional auto-reply bot with quiet hours and strict reply limits
+
+NODES AND MAP
+• Live node list with signal, battery and hop information
+• Map of node positions and neighbor links, with waypoints
+• Map areas you have viewed stay available offline
+• Favorites and notes for the nodes you care about
+
+FIELD TOOLS
+• Traceroute with per-hop signal, neighbor reports, range-test reception and Store & Forward history
+• Incident log, check-in and assistance message templates you review before sending
+• Optional coverage recording with CSV export
+• Field alerts: low battery, new nodes, and favorites that go quiet
+
+RADIO SETTINGS
+• Edit owner, LoRa, channel, device, position and module settings, confirmed by reading them back from the radio
+• Share and import channels by QR code or link
+• Encrypted radio settings backup and restore
+
+PRIVACY
+• No account, no ads, no analytics, no servers of ours
+• Location sharing is off by default and can be rounded on your phone before it is sent
+• Encrypted phone data backup for moving to a new phone, and one-tap deletion of your data
+
+REQUIREMENTS
+A LoRa radio running Meshtastic® firmware with Bluetooth. Most features need a connected radio.
+
+Mesh radio is not a guaranteed or secure communication channel. Do not rely on this app as your only way to call for help in an emergency.
+
+Meshtastic® is a registered trademark of Meshtastic LLC. Meshtastic software components are released under various licenses, see GitHub for details. No warranty is provided - use at your own risk. NOTORYX Connect is independently developed and is not affiliated with, sponsored by, or endorsed by Meshtastic LLC.

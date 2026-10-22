@@ -1,0 +1,7 @@
+First NOTORYX Connect release.
+• Chat history, queues and NodeDex kept separately for each radio
+• Channel imports confirmed by reading back from the radio
+• Field alerts for low battery, new nodes and quiet favorites
+• Encrypted phone data backup and restore
+• Approximate location sharing and a Privacy & data page
+• Low-power field mode now reduces location updates

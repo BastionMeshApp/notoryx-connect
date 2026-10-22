@@ -53,8 +53,9 @@ BASTION_KEY_PASSWORD, BASTION_KEY_ALIAS. Only the manually started main-branch s
 candidate workflow uses them. Existing development APKs use a different certificate:
 users may need to uninstall first, which removes local data. Export needed data before
 uninstalling; the radio-settings backup does not include phone message history.
-For Google Play, enroll in Play App Signing and treat this as an upload key. Store
-listing, Data Safety and account-side setup remain owner actions.
+For Google Play, enroll in Play App Signing and treat this as an upload key. The
+[Play submission guide](PLAY-STORE.md) has the listing, Data Safety, content rating and
+foreground-service answers; account-side setup and graphics remain owner actions.
 
 ## Privacy review
 BLE discovery/connection uses nearby-device permissions. Opt-in phone GPS is sent to
