@@ -22,13 +22,28 @@ class BastionArchiveSnapshot {
 /// load: unreadable data is copied to [backupKey] first, and if storage can't
 /// be read at all, saving stays off for this session.
 class BastionMessageArchive extends ChangeNotifier {
-  BastionMessageArchive({SharedPreferencesAsync? preferences})
+  BastionMessageArchive({SharedPreferencesAsync? preferences, this.radio})
       : _preferences = preferences;
 
+  /// Unassigned history: saved before history was kept per radio, or queued
+  /// before any radio connected. [BastionRadioHistory] moves it to radios.
   static const key = 'bastion.comms.archive.v1';
 
-  /// Holds the raw archive when it could not be fully read.
+  /// Holds the raw unassigned archive when it could not be fully read.
   static const backupKey = 'bastion.comms.archive.v1.unreadable';
+
+  /// The local node number of the radio this history belongs to; null for
+  /// unassigned history.
+  final int? radio;
+
+  /// Where this archive is stored.
+  String get storageKey => radio == null ? key : radioKey(radio!);
+
+  static String radioKey(int radio) =>
+      'bastion.comms.archive.v2.radio.${radio.toRadixString(16).padLeft(8, '0')}';
+
+  /// Whether saves are allowed; false after storage could not be read.
+  bool get canSave => !_saveBlocked;
 
   SharedPreferencesAsync? _preferences;
   Future<BastionArchiveSnapshot>? _loading;
@@ -48,7 +63,7 @@ class BastionMessageArchive extends ChangeNotifier {
   Future<BastionArchiveSnapshot> _load() async {
     final String? raw;
     try {
-      raw = await _store.getString(key);
+      raw = await _store.getString(storageKey);
     } catch (error) {
       _saveBlocked = true;
       _setLoadProblem('Message history could not be read from phone storage. '
@@ -101,7 +116,7 @@ class BastionMessageArchive extends ChangeNotifier {
   /// Copies [raw] aside before any save may replace it.
   Future<void> _keepUnreadable(String raw, String what) async {
     try {
-      await _store.setString(backupKey, raw);
+      await _store.setString('$storageKey.unreadable', raw);
       _setLoadProblem('$what A copy of the original data was kept on this phone.');
     } catch (_) {
       _saveBlocked = true;
@@ -134,7 +149,7 @@ class BastionMessageArchive extends ChangeNotifier {
     await _loading;
     if (_saveBlocked) return false;
     try {
-      await _store.setString(key, encoded);
+      await _store.setString(storageKey, encoded);
       if (_saveProblem != null) {
         _saveProblem = null;
         notifyListeners();
