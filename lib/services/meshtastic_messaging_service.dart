@@ -12,6 +12,7 @@ import '../generated/meshtastic/storeforward.pb.dart';
 import 'bastion_chat_message.dart';
 import 'bastion_bot_guard.dart';
 import 'bastion_message_archive.dart';
+import 'bastion_radio_history.dart';
 import 'meshtastic_connection_controller.dart';
 import 'meshtastic_phoneapi_codec.dart';
 import 'meshtastic_radio_session.dart';
@@ -22,13 +23,18 @@ class MeshtasticMessagingService {
   MeshtasticMessagingService({
     required this.session,
     required this.connection,
-    this.archive,
+    BastionMessageArchive? archive,
     int Function()? packetIdFactory,
-  }) : _packetIdFactory = packetIdFactory ?? _defaultPacketId;
+  }) : _archive = archive,
+       _packetIdFactory = packetIdFactory ?? _defaultPacketId;
 
   final MeshtasticRadioSession session;
   final MeshtasticConnectionController connection;
-  final BastionMessageArchive? archive;
+  BastionMessageArchive? _archive;
+  Future<void>? _attaching;
+
+  /// Where history and the queue are saved; null until a radio's is attached.
+  BastionMessageArchive? get archive => _archive;
   final int Function() _packetIdFactory;
 
   final StreamController<MeshtasticTextMessage> _incoming =
@@ -80,8 +86,9 @@ class MeshtasticMessagingService {
       connection.addListener(_onConnectionChanged);
       _started = true;
     }
+    final archive = _archive;
     if (archive != null && _messages.isEmpty && _pending.isEmpty) {
-      final snapshot = await archive!.load();
+      final snapshot = await archive.load();
       _messages.addAll(snapshot.messages);
       _pending.addAll(snapshot.pending);
       _trimHistory();
@@ -150,7 +157,24 @@ class MeshtasticMessagingService {
     return packetId;
   }
 
+  /// Switches to [archive] (one radio's history), merging its stored
+  /// messages and queue with anything received or queued in the meantime.
+  Future<void> attachArchive(BastionMessageArchive archive) =>
+      _attaching = _attach(archive);
+
+  Future<void> _attach(BastionMessageArchive archive) async {
+    _archive = archive;
+    final snapshot = await archive.load();
+    final messages = BastionRadioHistory.mergeMessages(snapshot.messages, _messages);
+    final pending = BastionRadioHistory.mergePending(snapshot.pending, _pending);
+    _messages..clear()..addAll(messages);
+    _pending..clear()..addAll(pending);
+    _notify();
+    if (connection.isReady) unawaited(flush());
+  }
+
   Future<void> flush() async {
+    await _attaching;
     if (_flushing || !connection.isReady) return;
     _flushing = true;
     try {
@@ -318,8 +342,9 @@ class MeshtasticMessagingService {
   }
 
   void _notify() {
+    final archive = _archive;
     if (archive != null) {
-      unawaited(archive!.save(messages: _messages, pending: _pending));
+      unawaited(archive.save(messages: _messages, pending: _pending));
     }
     if (!_changes.isClosed) _changes.add(null);
   }
@@ -328,8 +353,9 @@ class MeshtasticMessagingService {
     if (_started) connection.removeListener(_onConnectionChanged);
     _started = false;
     await _subscription?.cancel();
+    final archive = _archive;
     if (archive != null) {
-      await archive!.save(messages: _messages, pending: _pending);
+      await archive.save(messages: _messages, pending: _pending);
     }
     await _incoming.close();
     await _changes.close();

@@ -30,6 +30,7 @@ import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
 import 'bastion_message_archive.dart';
 import 'bastion_radio_config_codec.dart';
+import 'bastion_radio_history.dart';
 import 'bastion_reconnect_policy.dart';
 import 'bastion_reconnect_supervisor.dart';
 import 'bastion_telemetry_codec.dart';
@@ -70,12 +71,14 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     connection.addListener(_relayConnectionChange);
     _archive.addListener(notifyListeners);
     _archiveLoaded = _loadArchive();
-    unawaited(_loadNodeDex());
   }
 
   final MeshtasticConnectionController connection =
       MeshtasticConnectionController();
-  final BastionMessageArchive _archive = BastionMessageArchive();
+  final BastionRadioHistory _history = BastionRadioHistory();
+
+  /// History of the connected radio, or of the last one while disconnected.
+  BastionMessageArchive _archive = BastionMessageArchive();
 
   /// Completes once stored history is in [_archivedMessages]; offline sends
   /// wait for it so their save can't replace history that hasn't loaded yet.
@@ -230,11 +233,22 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   final List<Uint8List> _moduleConfigSnapshots = [];
 
   List<MeshtasticNode> get nodes => _nodes;
-  List<BastionChatMessage> get messages =>
-      _messaging?.messages ?? _archivedMessages;
+  /// The connected radio's history; until it identifies itself, the last
+  /// radio's history plus anything received since connecting.
+  List<BastionChatMessage> get messages {
+    final messaging = _messaging;
+    if (messaging == null) return _archivedMessages;
+    if (messaging.archive != null) return messaging.messages;
+    return BastionRadioHistory.mergeMessages(_archivedMessages, messaging.messages);
+  }
+
   String? get botProblem => _messaging?.botProblem;
-  int get pendingMessageCount =>
-      _messaging?.pending.length ?? _archivedPending.length;
+  int get pendingMessageCount {
+    final messaging = _messaging;
+    if (messaging == null) return _archivedPending.length;
+    if (messaging.archive != null) return messaging.pending.length;
+    return _archivedPending.length + messaging.pending.length;
+  }
   bool get busy => _busy;
   bool get isReady => connection.isReady;
   bool get isReconnecting => _reconnect.isRunning || _waitingForBluetooth;
@@ -403,15 +417,34 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     notifyListeners();
   }
 
-  Future<void> _loadNodeDex() async {
-    await _nodeDex.load();
-    notifyListeners();
-  }
-
+  /// Shows the last connected radio's history until a radio connects.
   Future<void> _loadArchive() async {
+    final last = await _history.lastRadio();
+    if (last != null) _setArchive(BastionMessageArchive(radio: last));
+    await _nodeDex.useRadio(last);
     final snapshot = await _archive.load();
     _archivedMessages = snapshot.messages;
     _archivedPending = snapshot.pending;
+    notifyListeners();
+  }
+
+  void _setArchive(BastionMessageArchive archive) {
+    _archive.removeListener(notifyListeners);
+    _archive = archive;
+    _archive.addListener(notifyListeners);
+  }
+
+  /// Switches chat history, the offline queue and NodeDex to the radio that
+  /// just identified itself, moving unassigned history to radios first.
+  Future<void> _useRadioHistory(MeshtasticMessagingService messaging, int nodeNum) async {
+    await _archiveLoaded;
+    if (_messaging != messaging || messaging.archive?.radio == nodeNum) return;
+    final archive = await _history.open(nodeNum);
+    if (_messaging != messaging) return;
+    _setArchive(archive);
+    await messaging.attachArchive(archive);
+    await _nodeDex.useRadio(nodeNum);
+    if (_messaging == messaging) _syncMessageSnapshot(messaging);
     notifyListeners();
   }
 
@@ -462,11 +495,12 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
         connection: connection,
       );
       final nodeDatabase = MeshtasticNodeDatabase(session);
+      // History is attached once the radio reports its node number.
       final messaging = MeshtasticMessagingService(
         session: session,
         connection: connection,
-        archive: _archive,
       );
+      _nodeDex.detach();
       final handshake = MeshtasticHandshake(
         session: session,
         connection: connection,
@@ -570,6 +604,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
           );
           if (nodeNum != null) {
             _localNodeNum = nodeNum;
+            unawaited(_useRadioHistory(messaging, nodeNum));
             messaging.configureBot(
               enabled: _botEnabled,
               reply: _botReply,
@@ -1140,7 +1175,10 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     }
   }
 
+  /// Copies the radio's history for offline display. Skipped until the
+  /// radio's history is attached, so the last radio's stays visible.
   void _syncMessageSnapshot(MeshtasticMessagingService messaging) {
+    if (messaging.archive == null) return;
     _archivedMessages = List.of(messaging.messages);
     _archivedPending = List.of(messaging.pending);
   }
