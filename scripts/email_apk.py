@@ -18,9 +18,9 @@ if not username or not password:
 message = EmailMessage()
 message["From"] = username
 message["To"] = recipient
-message["Subject"] = f"Bastion Meshtastic APK {sha}" if sha else "Bastion Meshtastic APK"
+message["Subject"] = f"NOTORYX Connect APK {sha}" if sha else "NOTORYX Connect APK"
 message.set_content(
-    "Bastion Meshtastic built successfully.\n\n"
+    "NOTORYX Connect built successfully.\n\n"
     f"Build: {run_url}\n"
     "The APK is attached when it is small enough for email."
 )
@@ -31,7 +31,7 @@ if apk.exists() and apk.stat().st_size <= max_attachment_bytes:
         apk.read_bytes(),
         maintype="application",
         subtype="vnd.android.package-archive",
-        filename="Bastion-Meshtastic.apk",
+        filename="NOTORYX-Connect.apk",
     )
 else:
     message.set_content(

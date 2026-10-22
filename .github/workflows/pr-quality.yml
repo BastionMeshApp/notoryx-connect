@@ -1,4 +1,4 @@
-name: Bastion PR Quality Gate
+name: NOTORYX PR Quality Gate
 on:
   pull_request:
     branches:
@@ -32,6 +32,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: Bastion-Field-Screen-QA
+          name: NOTORYX-Field-Screen-QA
           path: build/field-qa/
           if-no-files-found: ignore

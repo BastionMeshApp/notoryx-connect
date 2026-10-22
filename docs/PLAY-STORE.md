@@ -5,7 +5,7 @@ Everything needed in Play Console, with recommended answers. Recommended answers
 ## 1. Before the first upload (Owner)
 - [ ] Play Console developer account, identity verification, and (for a new personal account) the closed-testing requirement Google currently applies before production.
 - [ ] Create the app: name **NOTORYX Connect**, default language English (US), App, Free.
-- [ ] Enroll in **Play App Signing**. Upload the AAB from the `Bastion Signed Release Candidate` workflow; its key becomes the **upload key** (see [signing and recovery](SIGNING-AND-RECOVERY.md)). Package `org.backcountrysignal.bastion` is permanent once uploaded.
+- [ ] Enroll in **Play App Signing**. Upload the AAB from the `NOTORYX Signed Release Candidate` workflow; its key becomes the **upload key** (see [signing and recovery](SIGNING-AND-RECOVERY.md)). Package `org.backcountrysignal.bastion` is permanent once uploaded.
 - [ ] Fill in the placeholders in [PRIVACY-POLICY.md](PRIVACY-POLICY.md) (`[DATE…]`, `[PUBLISHER NAME]`, `[CONTACT EMAIL]`) and publish it at a stable public URL. A GitHub link to the file on `main` works; a page on your own site is better.
 - [ ] Trademark/domain clearance for "NOTORYX" (issue #55), and a re-check of the current [Meshtastic trademark rules](https://meshtastic.org/docs/legal/licensing-and-trademark/) ([TRADEMARKS.md](../TRADEMARKS.md) rule 8).
 
@@ -74,6 +74,6 @@ Google counts data as **collected** when the app transmits it off the device, ev
 Map tiles: the app requests tiles from OpenStreetMap, which sees the phone's IP address. Play does not list IP address as its own type; this is disclosed in the privacy policy.
 
 ## 4. Release
-- Version **1.0.0 (5)**. Build it with the `Bastion Signed Release Candidate` workflow from `main` and run the acceptance checklist in [release readiness](RELEASE-READINESS.md) on that exact AAB/APK first.
+- Version **1.0.0 (5)**. Build it with the `NOTORYX Signed Release Candidate` workflow from `main` and run the acceptance checklist in [release readiness](RELEASE-READINESS.md) on that exact AAB/APK first.
 - Start with an **internal or closed testing** track, then production.
 - After upload: Play Console → App integrity, and confirm the app-signing certificate. The upload certificate must match `docs/ANDROID-RELEASE-POLICY.json`.

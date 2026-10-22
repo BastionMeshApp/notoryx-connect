@@ -4,7 +4,7 @@ One pass through the app on real hardware before releasing 1.0.0. Work top to bo
 
 Tick each box when it behaves as described. If something doesn't, note what happened in the **Notes** column at the end and keep going.
 
-**You need:** the signed 1.0.0 APK from the `Bastion Signed Release Candidate` workflow (not a development build), your phone, radio A, and if possible radio B and a second phone with the app. Use a test channel, not one other people rely on.
+**You need:** the signed 1.0.0 APK from the `NOTORYX Signed Release Candidate` workflow (not a development build), your phone, radio A, and if possible radio B and a second phone with the app. Use a test channel, not one other people rely on.
 
 ## 0. Record what you're testing
 - [ ] Commit: `________`  APK SHA-256 (from `SHA256SUMS.txt`): `________`

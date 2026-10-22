@@ -31,7 +31,7 @@ for ((attempt=0; attempt<attempts; attempt++)); do
   sleep 2
 done
 if [[ "$displayed" != true ]]; then
-  echo 'Bastion did not display its first activity within the startup window.' >&2
+  echo 'NOTORYX Connect did not display its first activity within the startup window.' >&2
   exit 1
 fi
 
@@ -40,6 +40,6 @@ app_pid=$("$adb_bin" shell pidof "$package" | tr -d '\r')
 test -n "$app_pid"
 "$adb_bin" logcat --pid="$app_pid" -d > emulator-process-log.txt
 if grep -q 'FATAL EXCEPTION' emulator-process-log.txt; then
-  echo 'Bastion crashed during startup.' >&2
+  echo 'NOTORYX Connect crashed during startup.' >&2
   exit 1
 fi
