@@ -12,10 +12,10 @@ Everything needed in Play Console, with recommended answers. Recommended answers
 ## 2. Store listing
 Text is in `fastlane/metadata/android/en-US/` (title 15/30, short 73/80, full description about 2,000/4,000 characters, release notes for version code 5).
 
-Graphics still needed (**Owner**; they depend on the approved NOTORYX artwork):
-- [ ] App icon, 512 × 512 PNG
-- [ ] Feature graphic, 1024 × 500 PNG/JPG
-- [ ] 2–8 phone screenshots (16:9 or 9:16, at least 320 px on the short side). Suggested: Nodes with a connected radio, Chats, Map with nodes, Field tools, Settings → Field alerts, Privacy & data. Don't show real names, locations or channel keys.
+Graphics (made from the approved NOTORYX artwork in `branding/notoryx-icon-source.png`; regenerate with `tool/make_store_graphics.py`):
+- [x] App icon, 512 × 512 PNG: `fastlane/metadata/android/en-US/images/icon.png`
+- [x] Feature graphic, 1024 × 500: `fastlane/metadata/android/en-US/images/featureGraphic.png`
+- [ ] 2–8 phone screenshots (**Owner**) (16:9 or 9:16, at least 320 px on the short side). Suggested: Nodes with a connected radio, Chats, Map with nodes, Field tools, Settings → Field alerts, Privacy & data. Don't show real names, locations or channel keys.
 
 Category: **Communication**. Tags: messaging, outdoors/navigation. Contact email: the support address you choose (public).
 
