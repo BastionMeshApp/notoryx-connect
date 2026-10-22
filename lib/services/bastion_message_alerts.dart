@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import 'bastion_field_alerts.dart';
+
 /// Shows a phone notification for an incoming mesh message.
 abstract interface class BastionMessageAlerts {
   Future<void> show({
@@ -12,6 +14,9 @@ abstract interface class BastionMessageAlerts {
     required bool isDirect,
     required int channel,
   });
+
+  /// Shows a local field alert (battery, new node, quiet favorite).
+  Future<void> showFieldAlert(BastionFieldAlert alert);
 }
 
 /// Android notifications for messages that arrive while Bastion is not in
@@ -39,6 +44,31 @@ class BastionLocalMessageAlerts implements BastionMessageAlerts {
     importance: Importance.defaultImportance,
     category: AndroidNotificationCategory.message,
   );
+
+  static const _field = AndroidNotificationDetails(
+    'bastion_field_alerts',
+    'Field alerts',
+    channelDescription: 'Low battery, new nodes and favorites that go quiet.',
+    importance: Importance.high,
+    priority: Priority.high,
+    category: AndroidNotificationCategory.status,
+  );
+
+  @override
+  Future<void> showFieldAlert(BastionFieldAlert alert) async {
+    if (!_supported) return;
+    if (!await (_ready ??= _initialize())) return;
+    try {
+      await _plugin.show(
+        id: alert.notificationId,
+        title: alert.title,
+        body: alert.body,
+        notificationDetails: const NotificationDetails(android: _field),
+      );
+    } catch (error) {
+      debugPrint('Field alert failed: $error');
+    }
+  }
 
   Future<bool> _initialize() async {
     try {
