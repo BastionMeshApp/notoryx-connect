@@ -33,6 +33,7 @@ now verify with a fresh same-radio readback (see [save verification](SETTINGS-SA
 The [v0.1.2-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.2-beta.1) also records owner confirmation that the stable-signed, obfuscated candidate installed, connected, sent a message and retained an incident after restart. Both release records are owner-reported evidence, not independent hardware certification.
 
 ## Acceptance gate for the next exact candidate
+Work through the [1.0 device test checklist](DEVICE-TEST-CHECKLIST.md) on the exact signed candidate; it covers the items below in order.
 - Record commit, APK checksum, signing certificate, Android version, radio model/firmware.
 - Install the signed candidate, force-stop and relaunch. Verify QR camera permissions,
   selected secondary-channel delivery, DM, search, backups and wrong-password rejection.
