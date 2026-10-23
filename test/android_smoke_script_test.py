@@ -26,7 +26,7 @@ elif args[0] == 'logcat' and args[-1] == '-d':
         assert '--pid=12345' in args
         print('FATAL EXCEPTION: main' if case == 'crash' else 'App is alive')
     elif case != 'never_displayed':
-        print('ActivityTaskManager: Displayed com.bastionmesh.connect/.MainActivity: +15s')
+        print('ActivityTaskManager: Displayed com.bastionmesh.connect/com.bastionmesh.bastion.MainActivity: +15s')
 elif args[0] == 'exec-out':
     print('screenshot fixture')
 '''
