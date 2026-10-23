@@ -22,15 +22,15 @@ This is owner-reported hardware evidence; it is not a pass for a newly signed,
 obfuscated artifact or for a second radio. Main PR #49 passed 16 checks and 164 tests.
 PR #51 adds fresh same-radio readback for generic editor saves; PR #52 preserves
 drafts and the submitted snapshot while verification runs. The published
-[v0.1.3-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.3-beta.1)
+[v0.1.3-beta.1 release](https://github.com/BastionMeshApp/notoryx-connect/releases/tag/v0.1.3-beta.1)
 (app 0.1.3+4, source `68abe898`) records owner verification of the exact signed
 candidate on the T1000-E and authorization to release. Its
-[signed build](https://github.com/charlottemeshtastic/Bastion-Meshtastic/actions/runs/38292447353)
+[signed build](https://github.com/BastionMeshApp/notoryx-connect/actions/runs/38292447353)
 passed 174 app tests. This later evidence supersedes the earlier pending-candidate
 status; it does not establish a pass for a second radio or every scenario below. Bulk channel-link imports
 now verify with a fresh same-radio readback (see [save verification](SETTINGS-SAVE-VERIFICATION.md)). Backup restore performs its own readback verification.
 
-The [v0.1.2-beta.1 release](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.2-beta.1) also records owner confirmation that the stable-signed, obfuscated candidate installed, connected, sent a message and retained an incident after restart. Both release records are owner-reported evidence, not independent hardware certification.
+The [v0.1.2-beta.1 release](https://github.com/BastionMeshApp/notoryx-connect/releases/tag/v0.1.2-beta.1) also records owner confirmation that the stable-signed, obfuscated candidate installed, connected, sent a message and retained an incident after restart. Both release records are owner-reported evidence, not independent hardware certification.
 
 ## Acceptance gate for the next exact candidate
 Work through the [1.0 device test checklist](DEVICE-TEST-CHECKLIST.md) on the exact signed candidate; it covers the items below in order.
