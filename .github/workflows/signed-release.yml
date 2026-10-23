@@ -23,6 +23,8 @@ jobs:
         with:
           flutter-version: '3.47.7'
           channel: stable
+      - name: Install Android NDK (retries corrupted downloads)
+        uses: ./.github/actions/install-android-ndk
       - name: Prepare Android and signing
         run: |
           python3 scripts/check_release_hygiene.py
