@@ -18,6 +18,12 @@ NOTORYX Connect pairs your phone with a radio over Bluetooth so you can message,
   <img src="docs/screenshots/tools.png" width="200" alt="Tools tab: field tools and deployment checklist">
   <img src="docs/screenshots/settings_light.png" width="200" alt="Settings tab in the light theme">
 </p>
+<p align="center">
+  <img src="docs/screenshots/field_records.png" width="200" alt="Field records: incident log, templates, coverage and bot safeguards">
+  <img src="docs/screenshots/privacy.png" width="200" alt="Privacy and data: what's stored and what's sent">
+  <img src="docs/screenshots/radio_backup.png" width="200" alt="Encrypted radio backup">
+  <img src="docs/screenshots/phone_backup.png" width="200" alt="Phone data backup">
+</p>
 
 > NOTORYX Connect is a beta. It has been checked on one radio (a Seeed T1000-E) and in automated tests, not yet on a wide range of phones, radios and firmware versions. Don't rely on it as your only way to call for help. Please [report issues](../../issues).
 
@@ -101,7 +107,7 @@ CI generates the Android project with the Dart project name `bastion` and organi
 
 Dependency versions are locked in the committed `pubspec.lock`, and CI runs `flutter pub get --enforce-lockfile`, so every build uses the same packages. To change a dependency, edit `pubspec.yaml`, run plain `flutter pub get`, and commit the updated `pubspec.lock`.
 
-The README screenshots are rendered by `test/preview/screens_preview_test.dart`:
+The README screenshots (the four main tabs plus field records, privacy and both backup screens) are rendered by `test/preview/screens_preview_test.dart`:
 
 ```sh
 PREVIEW_OUT=docs/screenshots flutter test test/preview
