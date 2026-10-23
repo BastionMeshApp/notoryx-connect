@@ -1,11 +1,17 @@
-// Renders README screenshots of each main tab with real fonts.
+// Renders README screenshots of each main tab and the main sub-screens
+// with real fonts.
 // Skipped unless PREVIEW_OUT is set:
 //   PREVIEW_OUT=docs/screenshots flutter test test/preview
 // No radio is connected, so tabs show their not-yet-connected state.
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:bastion/field_tools_page.dart';
 import 'package:bastion/main.dart';
+import 'package:bastion/phone_backup_page.dart';
+import 'package:bastion/privacy_page.dart';
+import 'package:bastion/radio_backup_page.dart';
+import 'package:bastion/services/meshtastic_radio_coordinator.dart';
 import 'package:bastion/services/bastion_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -54,6 +60,39 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
       const MethodChannel('plugins.flutter.io/path_provider'), (call) async => tmp);
   });
+
+  // Sub-screens opened from the tabs, rendered in the dark theme.
+  final pages = <String, Widget Function(MeshtasticRadioCoordinator)>{
+    'field_records': (radio) => FieldToolsPage(radio: radio),
+    'privacy': (radio) => PrivacyPage(radio: radio),
+    'radio_backup': (radio) => RadioBackupPage(radio: radio),
+    'phone_backup': (radio) => PhoneBackupPage(radio: radio),
+  };
+  for (final page in pages.entries) {
+    testWidgets('page ${page.key}', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final radio = MeshtasticRadioCoordinator();
+      addTearDown(radio.dispose);
+      final boundary = GlobalKey();
+      await tester.pumpWidget(RepaintBoundary(key: boundary, child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: BastionApp.appearance(Brightness.dark),
+        home: page.value(radio),
+      )));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        final ro = boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final image = await ro.toImage(pixelRatio: 2);
+        final png = await image.toByteData(format: ui.ImageByteFormat.png);
+        File('$out/${page.key}.png')
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(png!.buffer.asUint8List());
+      });
+    }, skip: out == null);
+  }
 
   for (final mode in [ThemeMode.dark, ThemeMode.light]) {
     testWidgets('main tabs ${mode.name}', (tester) async {
