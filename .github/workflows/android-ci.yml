@@ -26,6 +26,8 @@ jobs:
         with:
           flutter-version: '3.47.7'
           channel: stable
+      - name: Install Android NDK (retries corrupted downloads)
+        uses: ./.github/actions/install-android-ndk
       - name: Generate Android platform
         run: |
           flutter create --no-pub --platforms=android --org com.bastionmesh --project-name bastion .

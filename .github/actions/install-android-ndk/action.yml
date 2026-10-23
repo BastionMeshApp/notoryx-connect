@@ -1,0 +1,35 @@
+name: Install Android NDK
+description: >-
+  Installs the NDK version Flutter's Gradle plugin uses before the build, and
+  retries when the download is corrupted ("Error on ZipFile unknown archive"),
+  so Gradle never has to download it mid-build. Needs Java and Flutter set up.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+        # Read the version from the Flutter SDK so a Flutter upgrade can't leave it stale.
+        KT="$FLUTTER_ROOT/packages/flutter_tools/gradle/src/main/kotlin/FlutterExtension.kt"
+        NDK=$(sed -n 's/.*val ndkVersion: String = "\([0-9.]*\)".*/\1/p' "$KT")
+        test -n "$NDK" || { echo "Could not read Flutter's NDK version from $KT"; exit 1; }
+        SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+        SDKMANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+        DIR="$SDK/ndk/$NDK"
+        installed() { grep -Eq "^Pkg\.Revision *= *$NDK\$" "$DIR/source.properties" 2>/dev/null; }
+        if installed; then
+          echo "NDK $NDK is already installed"
+          exit 0
+        fi
+        for attempt in 1 2 3 4; do
+          echo "Installing NDK $NDK (attempt $attempt of 4)"
+          rm -rf "$DIR"
+          if { yes || true; } | "$SDKMANAGER" --install "ndk;$NDK" > "$RUNNER_TEMP/sdkmanager-ndk.log" 2>&1 && installed; then
+            echo "NDK $NDK installed"
+            exit 0
+          fi
+          tail -n 5 "$RUNNER_TEMP/sdkmanager-ndk.log"
+          sleep $((attempt * 15))
+        done
+        echo "::error::NDK $NDK could not be installed after 4 attempts"
+        exit 1
