@@ -1,6 +1,6 @@
 # PR #1 feature review — 2026-10-12
 
-Reviewed [PR #1](https://github.com/BastionMeshApp/notoryx-connect/pull/1) at
+Reviewed [PR #1](https://github.com/TheLogsAreScreaming/notoryx-connect/pull/1) at
 commit e920e36f90cc69120ff7973a81b112b2fdbdbeed, branch codex/local-automations.
 This identifies useful feature candidates; it does not claim they are integrated
 into main or hardware verified.
@@ -8,7 +8,7 @@ into main or hardware verified.
 **Status 2026-10-21:** candidates 2 and 4 are delivered on main through PR #49
 (`bastion_bot_guard.dart`, `bastion_field_log.dart`); do not port them again.
 Candidate 1 is implemented on main (`bastion_radio_history.dart`, per-radio NodeDex). Candidate 3 is implemented as Settings → Field alerts (`bastion_field_alerts.dart`). Candidate 5 remains. PR #1's head `e920e36f` now passes CI with 81 tests
-and builds an APK ([run 38156061289](https://github.com/BastionMeshApp/notoryx-connect/actions/runs/38156061289)),
+and builds an APK ([run 38156061289](https://github.com/TheLogsAreScreaming/notoryx-connect/actions/runs/38156061289)),
 so its description's "no APK" note is outdated.
 
 ## Recommended extraction order
