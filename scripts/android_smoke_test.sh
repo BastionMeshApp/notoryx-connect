@@ -3,8 +3,10 @@ set -euo pipefail
 
 adb_bin=${BASTION_SMOKE_ADB:-adb}
 attempts=${BASTION_SMOKE_ATTEMPTS:-30}
-package=org.backcountrysignal.bastion
-activity="$package/.MainActivity"
+package=com.bastionmesh.connect
+# The Kotlin namespace stays com.bastionmesh.bastion (from flutter create),
+# so the activity is named in full rather than relative to the app ID.
+activity="$package/com.bastionmesh.bastion.MainActivity"
 
 # Preserve startup diagnostics even when launch or process checks fail.
 collect_diagnostics() {

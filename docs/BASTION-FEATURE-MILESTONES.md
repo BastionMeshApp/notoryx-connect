@@ -43,7 +43,6 @@ Application baseline: `main`. Preserve `feature/bastion-beta`; see [release read
 - [ ] Network health scores and explainable recommendations
 - [x] Local field observation history and CSV export
 - [ ] Validated dead-zone predictions
-- [ ] Optional BackCountrySignal integration with opt-in sharing
 
 ## Also delivered outside the milestones
 - Every config section and module editable through a generated settings form
@@ -68,4 +67,4 @@ The owner reports earlier reliability items 1–3 completed. Hardware models/ver
 2. Extend exact-signed-artifact testing to a second radio and more Android versions; include interrupted writes, QR add/replace round-trip, secondary-channel delivery, low-power GPS sharing, message storage after restart and screen-off recovery.
 3. Adapt the remaining PR #1 candidates individually: radio-scoped history, local alerts, imported map packs. Bot limits and coverage observations are already on main; see the [PR #1 review](PR1-FEATURE-REVIEW.md). Do not replace main with the alternate application.
 
-The latest published beta is [v0.1.3-beta.1](https://github.com/charlottemeshtastic/Bastion-Meshtastic/releases/tag/v0.1.3-beta.1). Its release notes record owner verification of the exact signed candidate on a T1000-E; this does not certify all devices or every acceptance scenario.
+The latest published beta is [v0.1.3-beta.1](https://github.com/BastionMeshApp/notoryx-connect/releases/tag/v0.1.3-beta.1). Its release notes record owner verification of the exact signed candidate on a T1000-E; this does not certify all devices or every acceptance scenario.

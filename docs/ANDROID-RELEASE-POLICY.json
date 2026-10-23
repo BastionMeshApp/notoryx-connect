@@ -1,5 +1,5 @@
 {
-  "package": "org.backcountrysignal.bastion",
+  "package": "com.bastionmesh.connect",
   "certificateSha256": "aad7ff2f53688f46f00761e2663eadf9f68ebfc139d0c4e9d4ca6025201801de",
   "permissions": [
     "android.permission.ACCESS_COARSE_LOCATION",
@@ -17,6 +17,6 @@
     "android.permission.RECEIVE_BOOT_COMPLETED",
     "android.permission.VIBRATE",
     "android.permission.WAKE_LOCK",
-    "org.backcountrysignal.bastion.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+    "com.bastionmesh.connect.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
   ]
 }
