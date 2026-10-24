@@ -31,6 +31,7 @@ import 'bastion_waypoints.dart';
 import 'bastion_beacons.dart';
 import 'bastion_trip.dart';
 import 'bastion_preferences.dart';
+import 'bastion_speech.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
 import 'bastion_message_archive.dart';
@@ -62,7 +63,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     BastionMessageAlerts? alerts,
     PhoneLocationSource? location,
     BluetoothAvailability? bluetooth,
-  }) : _background = background ?? BastionForegroundService(),
+    BastionSpeaker? speaker,
+  }) : _speaker = speaker ?? TtsSpeaker(),
+       _background = background ?? BastionForegroundService(),
        _bluetooth = bluetooth ?? UniversalBleAvailability(),
        _alerts = alerts ?? BastionLocalMessageAlerts(),
        _location = location ?? GeolocatorLocationSource() {
@@ -194,6 +197,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   String? _locationShareProblem;
   late final AppLifecycleListener _lifecycle;
   bool _inForeground = true;
+  final BastionSpeaker _speaker;
   late final BastionReconnectSupervisor _reconnect = BastionReconnectSupervisor(
     reconnect: _reconnectLastDevice,
     mayReconnect: () =>
@@ -1246,11 +1250,15 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
 
   /// Notifies about a message that arrives while the app is backgrounded.
   void _alertIncoming(MeshtasticTextMessage message) {
-    if (_inForeground) return;
     String sender = '!${message.from.toRadixString(16).padLeft(8, '0')}';
     for (final node in _nodes) {
       if (node.num == message.from) sender = node.displayName;
     }
+    if (BastionPreferences.instance.readAloud && !message.isReaction) {
+      unawaited(_speaker.speak(
+          '${message.isBroadcast ? 'Channel message' : 'Message'} from $sender. ${message.text}'));
+    }
+    if (_inForeground) return;
     unawaited(
       _alerts.show(
         packetId: message.packetId,
