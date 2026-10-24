@@ -17,6 +17,7 @@ abstract final class MeshtasticTextCodec {
     var packetId = 0;
     int? rxTime;
     double? rxSnr;
+    var viaMqtt = false;
     Uint8List? decoded;
 
     while (offset < bytes.length) {
@@ -49,6 +50,10 @@ abstract final class MeshtasticTextCodec {
         rxSnr = ByteData.sublistView(bytes, offset, offset + 4)
             .getFloat32(0, Endian.little);
         offset += 4;
+      } else if (field == 14 && wire == 0) {
+        final v = _readVarint(bytes, offset);
+        viaMqtt = v.value != 0;
+        offset = v.next;
       } else {
         offset = _skip(bytes, offset, wire);
       }
@@ -65,6 +70,9 @@ abstract final class MeshtasticTextCodec {
       text: utf8.decode(data.payload, allowMalformed: true),
       rxTime: rxTime,
       rxSnr: rxSnr,
+      replyId: data.replyId == 0 ? null : data.replyId,
+      isReaction: data.emoji != 0,
+      viaMqtt: viaMqtt,
     );
   }
 
@@ -140,6 +148,8 @@ abstract final class MeshtasticTextCodec {
     int channel = 0,
     required int packetId,
     bool wantAck = false,
+    int? replyId,
+    bool reaction = false,
   }) {
     if (packetId <= 0 || packetId > 0xffffffff) {
       throw ArgumentError.value(packetId, 'packetId', 'must be a non-zero uint32');
@@ -150,9 +160,12 @@ abstract final class MeshtasticTextCodec {
     final payload = utf8.encode(text);
     if (payload.isEmpty) throw ArgumentError.value(text, 'text', 'must not be empty');
 
+    // A reaction is an emoji text with Data.reply_id (7) and Data.emoji (8).
     final data = <int>[
       0x08, textMessagePort,
       0x12, ..._varint(payload.length), ...payload,
+      if (replyId != null) 0x3d, if (replyId != null) ..._fixed32(replyId),
+      if (reaction) 0x45, if (reaction) ..._fixed32(1),
     ];
     final packet = <int>[
       0x15, ..._fixed32(destination),
@@ -169,6 +182,8 @@ abstract final class MeshtasticTextCodec {
   static _DataPayload? _decodeData(Uint8List bytes) {
     var offset = 0;
     var port = 0;
+    var replyId = 0;
+    var emoji = 0;
     Uint8List? payload;
     while (offset < bytes.length) {
       final key = _readVarint(bytes, offset);
@@ -183,11 +198,17 @@ abstract final class MeshtasticTextCodec {
         final v = _readBytes(bytes, offset);
         payload = v.bytes;
         offset = v.next;
+      } else if (field == 7 && wire == 5) {
+        replyId = _readFixed32(bytes, offset);
+        offset += 4;
+      } else if (field == 8 && wire == 5) {
+        emoji = _readFixed32(bytes, offset);
+        offset += 4;
       } else {
         offset = _skip(bytes, offset, wire);
       }
     }
-    return payload == null ? null : _DataPayload(port, payload);
+    return payload == null ? null : _DataPayload(port, payload, replyId, emoji);
   }
 
   static List<int> _varint(int value) {
@@ -266,6 +287,9 @@ class MeshtasticTextMessage {
     required this.text,
     this.rxTime,
     this.rxSnr,
+    this.replyId,
+    this.isReaction = false,
+    this.viaMqtt = false,
   });
 
   final int packetId;
@@ -276,13 +300,24 @@ class MeshtasticTextMessage {
   final int? rxTime;
   final double? rxSnr;
 
+  /// The packet this message answers or reacts to.
+  final int? replyId;
+
+  /// Whether [text] is an emoji reaction to [replyId].
+  final bool isReaction;
+
+  /// Whether the packet reached the radio over MQTT rather than LoRa.
+  final bool viaMqtt;
+
   bool get isBroadcast => to == MeshtasticTextCodec.broadcastNode;
 }
 
 class _DataPayload {
-  const _DataPayload(this.port, this.payload);
+  const _DataPayload(this.port, this.payload, this.replyId, this.emoji);
   final int port;
   final Uint8List payload;
+  final int replyId;
+  final int emoji;
 }
 
 class _Varint {

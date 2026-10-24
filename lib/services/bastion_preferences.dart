@@ -8,7 +8,15 @@ class BastionPreferences extends ChangeNotifier {
   bool statistics = true;
   bool meshHealth = true;
   bool encounters = true;
+
+  /// Delete channel messages older than this many days; 0 keeps them.
+  int channelRetentionDays = 0;
+
+  /// Read incoming messages aloud while the app is open.
+  bool readAloud = false;
   String? error;
+
+  static const retentionChoices = [0, 1, 7, 30];
 
   Future<void> load() async {
     try {
@@ -18,15 +26,20 @@ class BastionPreferences extends ChangeNotifier {
       statistics = await p.getBool('bastion.dashboard.statistics') ?? true;
       meshHealth = await p.getBool('bastion.dashboard.health') ?? true;
       encounters = await p.getBool('bastion.dashboard.encounters') ?? true;
+      channelRetentionDays = await p.getInt('bastion.messages.channel_retention_days') ?? 0;
+      readAloud = await p.getBool('bastion.messages.read_aloud') ?? false;
     } catch (_) { error = 'Appearance preferences could not be loaded.'; }
     notifyListeners();
   }
 
-  Future<void> update({ThemeMode? mode, bool? stats, bool? health, bool? saved}) async {
+  Future<void> update({ThemeMode? mode, bool? stats, bool? health, bool? saved,
+      int? retentionDays, bool? speak}) async {
     theme = mode ?? theme;
     statistics = stats ?? statistics;
     meshHealth = health ?? meshHealth;
     encounters = saved ?? encounters;
+    channelRetentionDays = retentionDays ?? channelRetentionDays;
+    readAloud = speak ?? readAloud;
     error = null;
     notifyListeners();
     try {
@@ -35,6 +48,8 @@ class BastionPreferences extends ChangeNotifier {
       await p.setBool('bastion.dashboard.statistics', statistics);
       await p.setBool('bastion.dashboard.health', meshHealth);
       await p.setBool('bastion.dashboard.encounters', encounters);
+      await p.setInt('bastion.messages.channel_retention_days', channelRetentionDays);
+      await p.setBool('bastion.messages.read_aloud', readAloud);
     } catch (_) { error = 'Changes apply now, but could not be saved.'; notifyListeners(); }
   }
 }

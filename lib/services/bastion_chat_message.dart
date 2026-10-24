@@ -14,6 +14,9 @@ class BastionChatMessage {
     required this.direction,
     required this.deliveryState,
     this.rxSnr,
+    this.replyId,
+    this.isReaction = false,
+    this.viaMqtt = false,
   });
 
   final int packetId;
@@ -25,6 +28,15 @@ class BastionChatMessage {
   final BastionMessageDirection direction;
   final BastionDeliveryState deliveryState;
   final double? rxSnr;
+
+  /// The message this one reacts to, when [isReaction].
+  final int? replyId;
+
+  /// An emoji reaction to [replyId] rather than a message of its own.
+  final bool isReaction;
+
+  /// Reached the radio over MQTT (the internet), not over LoRa.
+  final bool viaMqtt;
 
   bool get isBroadcast => to == MeshtasticTextCodec.broadcastNode;
 
@@ -39,6 +51,9 @@ class BastionChatMessage {
         direction: direction,
         deliveryState: deliveryState ?? this.deliveryState,
         rxSnr: rxSnr,
+        replyId: replyId,
+        isReaction: isReaction,
+        viaMqtt: viaMqtt,
       );
 
   Map<String, Object?> toJson() => {
@@ -51,6 +66,9 @@ class BastionChatMessage {
     'direction': direction.name,
     'deliveryState': deliveryState.name,
     if (rxSnr != null) 'rxSnr': rxSnr,
+    if (replyId != null) 'replyId': replyId,
+    if (isReaction) 'reaction': true,
+    if (viaMqtt) 'viaMqtt': true,
   };
 
   static BastionChatMessage fromJson(Map<String, Object?> json) {
@@ -68,6 +86,9 @@ class BastionChatMessage {
         json['deliveryState']! as String,
       ),
       rxSnr: (json['rxSnr'] as num?)?.toDouble(),
+      replyId: json['replyId'] as int?,
+      isReaction: json['reaction'] as bool? ?? false,
+      viaMqtt: json['viaMqtt'] as bool? ?? false,
     );
   }
 }
@@ -78,18 +99,24 @@ class PendingTextMessage {
     required this.destination,
     required this.channel,
     required this.packetId,
+    this.replyId,
+    this.isReaction = false,
   });
 
   final String text;
   final int destination;
   final int channel;
   final int packetId;
+  final int? replyId;
+  final bool isReaction;
 
   Map<String, Object?> toJson() => {
     'text': text,
     'destination': destination,
     'channel': channel,
     'packetId': packetId,
+    if (replyId != null) 'replyId': replyId,
+    if (isReaction) 'reaction': true,
   };
 
   static PendingTextMessage fromJson(Map<String, Object?> json) =>
@@ -98,5 +125,7 @@ class PendingTextMessage {
         destination: json['destination']! as int,
         channel: json['channel']! as int,
         packetId: json['packetId']! as int,
+        replyId: json['replyId'] as int?,
+        isReaction: json['reaction'] as bool? ?? false,
       );
 }

@@ -1,6 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:quick_actions/quick_actions.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'beacon_page.dart';
 import 'map_page.dart';
 import 'field_tools_page.dart';
@@ -110,6 +116,33 @@ class _BastionShellState extends State<BastionShell> {
     Icons.shield_outlined, Icons.hub_outlined, Icons.chat_bubble_outline, Icons.map_outlined,
     Icons.build_outlined, Icons.settings_outlined,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _setUpShortcuts();
+  }
+
+  /// Long-press shortcuts on the app icon, each opening a tab.
+  void _setUpShortcuts() {
+    if (kIsWeb || !Platform.isAndroid) return;
+    const tabs = {'home': 0, 'nodes': 1, 'chats': 2, 'map': 3};
+    try {
+      const actions = QuickActions();
+      actions.initialize((type) {
+        final tab = tabs[type];
+        if (tab != null && mounted) setState(() => index = tab);
+      });
+      actions.setShortcutItems(const [
+        ShortcutItem(type: 'home', localizedTitle: 'Check in / SOS'),
+        ShortcutItem(type: 'chats', localizedTitle: 'Chats'),
+        ShortcutItem(type: 'nodes', localizedTitle: 'Nodes'),
+        ShortcutItem(type: 'map', localizedTitle: 'Map'),
+      ]).catchError((Object _) {});
+    } catch (_) {
+      // Shortcuts are a convenience; the app works without them.
+    }
+  }
 
   @override
   void dispose() {
@@ -412,12 +445,93 @@ class _ChatsPageState extends State<BastionChatsPage> {
   int channel = 0;
   final search = TextEditingController();
 
+  /// Unsent text per conversation, so switching chats doesn't lose it.
+  final Map<String, String> _drafts = {};
+  String get _draftKey => destination == 0xffffffff ? 'ch$channel' : 'dm$destination';
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadDrafts());
+  }
+
+  Future<void> _loadDrafts() async {
+    try {
+      final raw = await SharedPreferencesAsync().getString(_draftsKey);
+      if (raw == null || !mounted) return;
+      _drafts.addAll((jsonDecode(raw) as Map).cast<String, String>());
+      if (composer.text.isEmpty) composer.text = _drafts[_draftKey] ?? '';
+    } catch (_) {
+      // Drafts are a convenience; a damaged store is ignored.
+    }
+  }
+
+  static const _draftsKey = 'bastion.drafts.v1';
+
+  void _saveDraft() {
+    final text = composer.text;
+    if (text.trim().isEmpty) {
+      _drafts.remove(_draftKey);
+    } else {
+      _drafts[_draftKey] = text;
+    }
+    try {
+      unawaited(SharedPreferencesAsync().setString(_draftsKey, jsonEncode(_drafts))
+          .catchError((Object _) {}));
+    } catch (_) {
+      // Drafts are a convenience; storage may be unavailable.
+    }
+  }
+
+  /// Switches conversation, keeping each one's unsent text.
+  void _switchTo({int? newDestination, int? newChannel}) {
+    _saveDraft();
+    setState(() {
+      destination = newDestination ?? destination;
+      channel = newChannel ?? channel;
+      composer.text = _drafts[_draftKey] ?? '';
+    });
+  }
+
   @override
   void dispose() {
+    _saveDraft();
     reply.dispose();
     composer.dispose();
     search.dispose();
     super.dispose();
+  }
+
+  static const _reactionChoices = ['👍', '❤️', '😂', '😮', '😢', '✅', '🙏'];
+
+  Future<void> _react(BastionChatMessage message) async {
+    final emoji = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('React', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 4, children: [
+            for (final e in _reactionChoices)
+              IconButton(
+                tooltip: 'React $e',
+                onPressed: () => Navigator.pop(context, e),
+                icon: Text(e, style: const TextStyle(fontSize: 28)),
+              ),
+          ]),
+        ]),
+      )),
+    );
+    if (emoji == null || !mounted) return;
+    try {
+      await widget.radio.sendReaction(message, emoji);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(error is StateError ? error.message : 'Reaction not sent: $error')));
+      }
+    }
   }
 
   Future<void> _send([String? quickText]) async {
@@ -425,7 +539,10 @@ class _ChatsPageState extends State<BastionChatsPage> {
     if (text.isEmpty) return;
     try {
       await widget.radio.sendText(text: text, destination: destination, channel: channel);
-      if (quickText == null) composer.clear();
+      if (quickText == null) {
+        composer.clear();
+        _saveDraft();
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -446,7 +563,13 @@ class _ChatsPageState extends State<BastionChatsPage> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.radio,
     builder: (context, _) {
-      final messages = widget.radio.messages;
+      final all = widget.radio.messages;
+      // Reactions show under the message they react to, not on their own.
+      final messages = [for (final m in all) if (!m.isReaction) m];
+      final reactions = <int, List<BastionChatMessage>>{};
+      for (final m in all) {
+        if (m.isReaction && m.replyId != null) (reactions[m.replyId!] ??= []).add(m);
+      }
       final matches = BastionMessageSearch.filter(messages, search.text,
           (message) => message.text);
       final channels = widget.radio.channelMetadata.where((c) => c.role != 0).toList();
@@ -522,7 +645,7 @@ class _ChatsPageState extends State<BastionChatsPage> {
                     ),
                 ],
                 onChanged: (value) {
-                  if (value != null) setState(() => destination = value);
+                  if (value != null) _switchTo(newDestination: value);
                 },
               ),
               const SizedBox(height: 12),
@@ -536,7 +659,7 @@ class _ChatsPageState extends State<BastionChatsPage> {
                            child: Text('Channel $channel • Offline'))]
                     : [for (final c in channels) DropdownMenuItem(value: c.index,
                         child: Text('Channel ${c.index} • ${c.name.isEmpty ? 'Default' : c.name}'))],
-                onChanged: (value) { if (value != null) setState(() => channel = value); },
+                onChanged: (value) { if (value != null) _switchTo(newChannel: value); },
               ),
             ]),
           )),
@@ -555,6 +678,7 @@ class _ChatsPageState extends State<BastionChatsPage> {
                   border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _send(),
+                onChanged: (_) => _saveDraft(),
               ),
               SizedBox(
                 width: double.infinity,
@@ -601,20 +725,40 @@ class _ChatsPageState extends State<BastionChatsPage> {
             ),
             for (final message in matches.reversed)
               Card(child: ListTile(
+                onLongPress: () => _react(message),
                 leading: CircleAvatar(
                   child: Icon(message.direction == BastionMessageDirection.outgoing
                       ? Icons.north_east : Icons.south_west),
                 ),
                 title: Text(message.text),
-                subtitle: Text(
-                  message.direction == BastionMessageDirection.outgoing
-                      ? (message.isBroadcast
-                          ? 'You → Channel ${message.channel}'
-                          : 'You → ${_nodeName(message.to)}')
-                      : (message.isBroadcast
-                          ? '${_nodeName(message.from)} → Channel ${message.channel}'
-                          : '${_nodeName(message.from)} → You'),
-                ),
+                subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text([
+                    message.direction == BastionMessageDirection.outgoing
+                        ? (message.isBroadcast
+                            ? 'You → Channel ${message.channel}'
+                            : 'You → ${_nodeName(message.to)}')
+                        : (message.isBroadcast
+                            ? '${_nodeName(message.from)} → Channel ${message.channel}'
+                            : '${_nodeName(message.from)} → You'),
+                    // Heard over the internet, not over the air.
+                    if (message.viaMqtt) 'via MQTT',
+                  ].join(' • ')),
+                  if (reactions[message.packetId] case final rs?)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Semantics(
+                        label: 'Reactions: ${[for (final r in rs) '${r.text} from ${r.direction == BastionMessageDirection.outgoing ? 'you' : _nodeName(r.from)}'].join(', ')}',
+                        excludeSemantics: true,
+                        child: Wrap(spacing: 6, children: [
+                          for (final e in {for (final r in rs) r.text}.toList())
+                            Chip(
+                              visualDensity: VisualDensity.compact,
+                              label: Text('$e ${rs.where((r) => r.text == e).length}'),
+                            ),
+                        ]),
+                      ),
+                    ),
+                ]),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -879,6 +1023,7 @@ class _SettingsPage extends StatelessWidget {
         detail: 'Field behavior, connection preferences and build information.'),
       const SizedBox(height: 14),
       const BastionAppearanceCard(),
+      const _MessagesCard(),
       AnimatedBuilder(
         animation: radio,
         builder: (context, _) => Card(child: ExpansionTile(
@@ -1163,6 +1308,49 @@ String _connectionTileLabel(MeshtasticConnectionState state) => switch (state) {
   MeshtasticConnectionState.ready => 'ONLINE',
   MeshtasticConnectionState.error => 'ERROR',
 };
+
+/// Message housekeeping and read-aloud.
+class _MessagesCard extends StatelessWidget {
+  const _MessagesCard();
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: BastionPreferences.instance,
+    builder: (context, _) {
+      final p = BastionPreferences.instance;
+      return Card(child: ExpansionTile(
+        leading: const Icon(Icons.forum_outlined),
+        title: const Text('Messages'),
+        subtitle: Text([
+          p.channelRetentionDays == 0
+              ? 'Channel messages kept'
+              : 'Channel messages deleted after ${p.channelRetentionDays} day${p.channelRetentionDays == 1 ? '' : 's'}',
+          if (p.readAloud) 'read aloud on',
+        ].join(' • ')),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        children: [
+          DropdownButtonFormField<int>(
+            initialValue: BastionPreferences.retentionChoices.contains(p.channelRetentionDays)
+                ? p.channelRetentionDays : 0,
+            decoration: const InputDecoration(
+              labelText: 'Delete old channel messages',
+              helperText: 'Direct messages are always kept',
+            ),
+            items: [for (final d in BastionPreferences.retentionChoices)
+              DropdownMenuItem(value: d, child: Text(d == 0 ? 'Never' : 'After $d day${d == 1 ? '' : 's'}'))],
+            onChanged: (d) => p.update(retentionDays: d),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Read messages aloud'),
+            subtitle: const Text('Uses the phone\'s text-to-speech, including with the screen off'),
+            value: p.readAloud,
+            onChanged: (v) => p.update(speak: v),
+          ),
+        ],
+      ));
+    },
+  );
+}
 
 /// Shows whether Android lets the app keep the radio link open in the
 /// background, with a shortcut to the battery optimization setting.

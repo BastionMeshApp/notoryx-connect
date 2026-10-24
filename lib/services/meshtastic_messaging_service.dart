@@ -113,6 +113,8 @@ class MeshtasticMessagingService {
     required String text,
     int destination = MeshtasticTextCodec.broadcastNode,
     int channel = 0,
+    int? replyId,
+    bool reaction = false,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) {
@@ -125,6 +127,8 @@ class MeshtasticMessagingService {
       destination: destination,
       channel: channel,
       packetId: packetId,
+      replyId: replyId,
+      isReaction: reaction,
     );
 
     _messages.add(BastionChatMessage(
@@ -138,6 +142,8 @@ class MeshtasticMessagingService {
       deliveryState: connection.isReady
           ? BastionDeliveryState.sent
           : BastionDeliveryState.queued,
+      replyId: replyId,
+      isReaction: reaction,
     ));
     _trimHistory();
 
@@ -202,6 +208,8 @@ class MeshtasticMessagingService {
       channel: message.channel,
       packetId: message.packetId,
       wantAck: message.destination != MeshtasticTextCodec.broadcastNode,
+      replyId: message.replyId,
+      reaction: message.isReaction,
     ));
   }
 
@@ -281,12 +289,16 @@ class MeshtasticMessagingService {
         direction: BastionMessageDirection.incoming,
         deliveryState: BastionDeliveryState.received,
         rxSnr: message.rxSnr,
+        replyId: message.replyId,
+        isReaction: message.isReaction,
+        viaMqtt: message.viaMqtt,
       ));
       _trimHistory();
       _incoming.add(message);
       _notify();
-      // Replayed history is old; auto-replying to it would spam the mesh.
-      if (replay == null) unawaited(_maybeBotReply(message));
+      // Replayed history is old, and reactions aren't messages to answer;
+      // auto-replying to either would spam the mesh.
+      if (replay == null && !message.isReaction) unawaited(_maybeBotReply(message));
     } catch (error, stackTrace) {
       _incoming.addError(error, stackTrace);
     }
@@ -335,7 +347,23 @@ class MeshtasticMessagingService {
     _notify();
   }
 
+  /// Channel (broadcast) messages older than this are deleted; null keeps
+  /// them. Direct messages are never deleted this way.
+  Duration? channelMessageMaxAge;
+
+  /// Applies [channelMessageMaxAge] now, e.g. after it changes.
+  void pruneChannelMessages() {
+    final before = _messages.length;
+    _trimHistory();
+    if (_messages.length != before) _notify();
+  }
+
   void _trimHistory() {
+    final maxAge = channelMessageMaxAge;
+    if (maxAge != null) {
+      final cutoff = DateTime.now().subtract(maxAge);
+      _messages.removeWhere((m) => m.isBroadcast && m.timestamp.isBefore(cutoff));
+    }
     if (_messages.length > 500) {
       _messages.removeRange(0, _messages.length - 500);
     }
