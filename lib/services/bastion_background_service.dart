@@ -19,7 +19,32 @@ class BastionForegroundService implements BastionBackgroundKeeper {
   bool _initialized = false;
   bool _permissionRequested = false;
 
+  /// Why the background service could not start, for the user; null when it
+  /// started or was never needed.
+  final ValueNotifier<String?> problem = ValueNotifier(null);
+
   static bool get _supported => !kIsWeb && Platform.isAndroid;
+
+  /// Whether Android battery optimization may pause the app in the
+  /// background; null where that does not apply.
+  static Future<bool?> batteryOptimized() async {
+    if (!_supported) return null;
+    try {
+      return !await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Opens Android's battery optimization settings.
+  static Future<void> openBatterySettings() async {
+    if (!_supported) return;
+    try {
+      await FlutterForegroundTask.openIgnoreBatteryOptimizationSettings();
+    } catch (error) {
+      debugPrint('Bastion battery settings error: $error');
+    }
+  }
 
   @override
   Future<void> keepAlive({required String radioName, required bool reconnecting}) async {
@@ -29,6 +54,7 @@ class BastionForegroundService implements BastionBackgroundKeeper {
     try {
       if (await FlutterForegroundTask.isRunningService) {
         await FlutterForegroundTask.updateService(notificationTitle: title, notificationText: text);
+        problem.value = null;
         return;
       }
       _initialize();
@@ -50,12 +76,20 @@ class BastionForegroundService implements BastionBackgroundKeeper {
       );
       if (result case ServiceRequestFailure(:final error)) {
         debugPrint('Bastion background service did not start: $error');
+        problem.value = _unavailable(error);
+      } else {
+        problem.value = null;
       }
     } catch (error) {
       // Background keep-alive is best effort; the foreground link still works.
       debugPrint('Bastion background service error: $error');
+      problem.value = _unavailable(error);
     }
   }
+
+  static String _unavailable(Object error) =>
+      'The background connection service could not start ($error), so Android '
+      'may drop the radio link when NOTORYX Connect is not on screen.';
 
   @override
   Future<void> release() async {

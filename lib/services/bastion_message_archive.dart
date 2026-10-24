@@ -66,7 +66,7 @@ class BastionMessageArchive extends ChangeNotifier {
       raw = await _store.getString(storageKey);
     } catch (error) {
       _saveBlocked = true;
-      _setLoadProblem('Message history could not be read from phone storage. '
+      _setLoadProblem('Message history could not be read from phone storage ($error). '
           'New messages are not saved until the app restarts, so stored history is not overwritten.');
       return const BastionArchiveSnapshot();
     }
