@@ -13,6 +13,7 @@ import 'package:bastion/phone_backup_page.dart';
 import 'package:bastion/privacy_page.dart';
 import 'package:bastion/radio_backup_page.dart';
 import 'package:bastion/services/meshtastic_radio_coordinator.dart';
+import 'package:bastion/trip_page.dart';
 import 'package:bastion/services/bastion_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -43,6 +44,7 @@ void main() {
   final out = Platform.environment['PREVIEW_OUT'];
   // Tab icon to tap, and the file name for that tab.
   final tabs = {
+    Icons.shield_outlined: 'home',
     Icons.hub_outlined: 'nodes',
     Icons.chat_bubble_outline: 'chats',
     Icons.build_outlined: 'tools',
@@ -69,6 +71,7 @@ void main() {
     'radio_backup': (radio) => RadioBackupPage(radio: radio),
     'phone_backup': (radio) => PhoneBackupPage(radio: radio),
     'beacons': (radio) => BeaconPage(radio: radio),
+    'trip': (radio) => TripPage(radio: radio),
   };
   for (final page in pages.entries) {
     testWidgets('page ${page.key}', (tester) async {

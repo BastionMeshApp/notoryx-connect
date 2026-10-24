@@ -29,6 +29,7 @@ import 'bastion_field_log.dart';
 import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
 import 'bastion_beacons.dart';
+import 'bastion_trip.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
 import 'bastion_message_archive.dart';
@@ -68,6 +69,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     _bluetoothSubscription = _bluetooth.changes.listen(_handleBluetoothChange);
     unawaited(_waypoints.load().then((_) => notifyListeners()));
     unawaited(_beacons.load().then((_) => notifyListeners()));
+    trip.addListener(notifyListeners);
+    unawaited(trip.load());
     _lifecycle = AppLifecycleListener(
       onStateChange: (state) =>
           _inForeground = state == AppLifecycleState.resumed,
@@ -173,6 +176,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   bool _waitingForBluetooth = false;
   final BastionWaypointStore _waypoints = BastionWaypointStore();
   final BastionBeaconLog _beacons = BastionBeaconLog();
+
+  /// Trip contacts, check-ins, SOS, reminders and overdue alerts.
+  late final BastionTripController trip = BastionTripController(radio: _CoordinatorTripRadio(this));
   final MeshtasticMeshTools _meshTools = MeshtasticMeshTools();
   StreamSubscription<Uint8List>? _meshToolsSubscription;
   StreamSubscription<Uint8List>? _waypointSubscription;
@@ -1399,7 +1405,48 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     unawaited(_background.release());
     connection.removeListener(_relayConnectionChange);
     _archive.removeListener(notifyListeners);
+    trip
+      ..removeListener(notifyListeners)
+      ..dispose();
     unawaited(_shutdownSession(resetConnection: true));
     super.dispose();
   }
+}
+
+class _CoordinatorTripRadio implements TripRadio {
+  _CoordinatorTripRadio(this._radio);
+  final MeshtasticRadioCoordinator _radio;
+
+  @override
+  bool get isReady => _radio.isReady;
+
+  @override
+  int? get localNodeNum => _radio.localNodeNum;
+
+  @override
+  ({double? latitude, double? longitude, int? battery}) get localStatus {
+    final node = _radio.localNode;
+    return (latitude: node?.latitude, longitude: node?.longitude, battery: node?.batteryLevel);
+  }
+
+  @override
+  List<BastionChatMessage> get messages => _radio.messages;
+
+  @override
+  DateTime? lastHeard(int node) {
+    for (final n in _radio.nodes) {
+      if (n.num == node) return n.lastHeard;
+    }
+    return null;
+  }
+
+  @override
+  String nodeName(int node) => _radio.nodeName(node);
+
+  @override
+  Future<int> sendText({required String text, required int destination, required int channel}) =>
+      _radio.sendText(text: text, destination: destination, channel: channel);
+
+  @override
+  void alert(BastionFieldAlert alert) => _radio._raise(alert);
 }
