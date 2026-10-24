@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'map_page.dart';
 import 'field_tools_page.dart';
 import 'services/bastion_field_log.dart';
+import 'services/bastion_background_service.dart';
 import 'services/bastion_bot_guard.dart';
 import 'services/bastion_preferences.dart';
 import 'phone_backup_page.dart';
@@ -201,7 +202,7 @@ class _NodesPage extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: _Stat(
             label: 'STATUS',
-            value: _connectionLabel(radio.connection.state),
+            value: _connectionTileLabel(radio.connection.state),
           )),
         ]),
         const SizedBox(height: 14),
@@ -254,6 +255,8 @@ class _NodesPage extends StatelessWidget {
             )),
         if (radio.connection.error != null)
           _Notice(text: radio.connection.error!, icon: Icons.error_outline),
+        if (radio.backgroundProblem != null)
+          _Notice(text: radio.backgroundProblem!, icon: Icons.warning_amber),
         if (radio.nodes.isNotEmpty) ...[
           const SizedBox(height: 14),
           const Text('LIVE MESH NODES',
@@ -477,7 +480,7 @@ class _ChatsPageState extends State<BastionChatsPage> {
           Row(children: [
             Expanded(child: _Stat(
               label: 'LINK',
-              value: connected ? 'CONNECTED' : 'OFFLINE',
+              value: connected ? 'ONLINE' : 'OFFLINE',
             )),
             const SizedBox(width: 10),
             Expanded(child: _Stat(
@@ -965,6 +968,10 @@ class _SettingsPage extends StatelessWidget {
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
             builder: (_) => PrivacyPage(radio: radio))),
       )),
+      AnimatedBuilder(
+        animation: radio,
+        builder: (context, _) => _BackgroundCard(radio: radio),
+      ),
       const _MapCacheCard(),
       AnimatedBuilder(
         animation: radio,
@@ -1127,6 +1134,71 @@ String _connectionLabel(MeshtasticConnectionState state) => switch (state) {
   MeshtasticConnectionState.ready => 'CONNECTED',
   MeshtasticConnectionState.error => 'ERROR',
 };
+
+/// Short status words for the dashboard tiles, which are too narrow for
+/// CONNECTED or CONNECTING without breaking the word.
+String _connectionTileLabel(MeshtasticConnectionState state) => switch (state) {
+  MeshtasticConnectionState.disconnected => 'OFFLINE',
+  MeshtasticConnectionState.discovering => 'SCANNING',
+  MeshtasticConnectionState.connecting => 'LINKING',
+  MeshtasticConnectionState.connected => 'ONLINE',
+  MeshtasticConnectionState.synchronizing => 'SYNCING',
+  MeshtasticConnectionState.ready => 'ONLINE',
+  MeshtasticConnectionState.error => 'ERROR',
+};
+
+/// Shows whether Android lets the app keep the radio link open in the
+/// background, with a shortcut to the battery optimization setting.
+class _BackgroundCard extends StatefulWidget {
+  const _BackgroundCard({required this.radio});
+  final MeshtasticRadioCoordinator radio;
+  @override
+  State<_BackgroundCard> createState() => _BackgroundCardState();
+}
+
+class _BackgroundCardState extends State<_BackgroundCard> {
+  bool? _optimized;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-check when the user comes back from Android's settings.
+    _lifecycle = AppLifecycleListener(onResume: _check);
+    _check();
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _check() async {
+    final optimized = await BastionForegroundService.batteryOptimized();
+    if (mounted) setState(() => _optimized = optimized);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final optimized = _optimized;
+    if (optimized == null) return const SizedBox.shrink();
+    final problem = widget.radio.backgroundProblem;
+    return Card(child: ListTile(
+      leading: Icon(problem != null || optimized ? Icons.warning_amber : Icons.check_circle_outline,
+        color: problem != null || optimized ? Theme.of(context).colorScheme.error : BastionApp.accentOf(context)),
+      title: const Text('Background connection'),
+      subtitle: Text(problem ?? (optimized
+          ? 'Battery optimization can pause NOTORYX Connect when it is not on screen and drop the '
+            'radio link. Set its battery use to Unrestricted to stay connected.'
+          : 'Allowed to run in the background. A notification shows while a radio is connected.')),
+      isThreeLine: true,
+      trailing: optimized ? TextButton(
+        onPressed: BastionForegroundService.openBatterySettings,
+        child: const Text('Open settings')) : null,
+    ));
+  }
+}
 
 class _MapCacheCard extends StatefulWidget {
   const _MapCacheCard();

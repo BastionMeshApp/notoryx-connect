@@ -70,6 +70,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
           _inForeground = state == AppLifecycleState.resumed,
     );
     connection.addListener(_relayConnectionChange);
+    if (_background case BastionForegroundService(:final problem)) {
+      problem.addListener(notifyListeners);
+    }
     _archive.addListener(notifyListeners);
     _archiveLoaded = _loadArchive();
     unawaited(BastionAlertSettings.load().then((s) {
@@ -146,6 +149,12 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
 
   /// Why chat history or the offline queue may not be stored; null when fine.
   String? get messageStorageProblem => _archive.problem;
+
+  /// Why the background connection service is not running; null when fine.
+  String? get backgroundProblem => switch (_background) {
+    BastionForegroundService(:final problem) => problem.value,
+    _ => null,
+  };
   final BastionNodeDex _nodeDex = BastionNodeDex();
   final BastionBackgroundKeeper _background;
   final BastionMessageAlerts _alerts;
