@@ -30,6 +30,7 @@ import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
 import 'bastion_beacons.dart';
 import 'bastion_trip.dart';
+import 'bastion_preferences.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
 import 'bastion_message_archive.dart';
@@ -70,6 +71,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     unawaited(_waypoints.load().then((_) => notifyListeners()));
     unawaited(_beacons.load().then((_) => notifyListeners()));
     trip.addListener(notifyListeners);
+    BastionPreferences.instance.addListener(_applyRetention);
     unawaited(trip.load());
     _lifecycle = AppLifecycleListener(
       onStateChange: (state) =>
@@ -607,7 +609,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
       final messaging = MeshtasticMessagingService(
         session: session,
         connection: connection,
-      );
+      )..channelMessageMaxAge = _channelMaxAge;
       _nodeDex.detach();
       final handshake = MeshtasticHandshake(
         session: session,
@@ -1087,6 +1089,37 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     notifyListeners();
   }
 
+  Duration? get _channelMaxAge {
+    final days = BastionPreferences.instance.channelRetentionDays;
+    return days > 0 ? Duration(days: days) : null;
+  }
+
+  void _applyRetention() {
+    final messaging = _messaging;
+    if (messaging == null) return;
+    messaging
+      ..channelMessageMaxAge = _channelMaxAge
+      ..pruneChannelMessages();
+    _syncMessageSnapshot(messaging);
+    notifyListeners();
+  }
+
+  /// Reacts to [target] with [emoji] (a Meshtastic tapback). Needs a ready
+  /// radio; reactions are not queued.
+  Future<void> sendReaction(BastionChatMessage target, String emoji) async {
+    final messaging = _messaging;
+    if (messaging == null || !connection.isReady) {
+      throw StateError('Connect to a radio to react.');
+    }
+    final destination = target.isBroadcast
+        ? MeshtasticTextCodec.broadcastNode
+        : target.direction == BastionMessageDirection.incoming ? target.from : target.to;
+    await messaging.sendText(text: emoji, destination: destination, channel: target.channel,
+        replyId: target.packetId, reaction: true);
+    _syncMessageSnapshot(messaging);
+    notifyListeners();
+  }
+
   /// Mesh Beacons heard on the mesh, newest first.
   List<HeardBeacon> get beacons => _beacons.beacons;
 
@@ -1408,6 +1441,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     trip
       ..removeListener(notifyListeners)
       ..dispose();
+    BastionPreferences.instance.removeListener(_applyRetention);
     unawaited(_shutdownSession(resetConnection: true));
     super.dispose();
   }
