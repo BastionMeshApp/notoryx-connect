@@ -1,0 +1,4 @@
+# False positives: SharedPreferences key names (e.g. 'bastion.beacons.v1'),
+# not credentials. Format: commit:file:rule:line.
+e006386c333d751b7fec26883a8856e555a2d1f8:lib/services/bastion_beacons.dart:generic-api-key:100
+1400bfb5a2316a075371f59e7d3a7c76d4d05bd8:lib/services/bastion_trip.dart:generic-api-key:236

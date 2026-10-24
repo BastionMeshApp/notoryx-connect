@@ -97,7 +97,7 @@ class BastionBeaconLog {
       : _clock = clock ?? DateTime.now,
         _preferences = preferences;
 
-  static const _key = 'bastion.beacons.v1';
+  static const _storeName = 'bastion.beacons.v1';
   static const _sentKey = 'bastion.beacons.last_sent';
 
   /// The firmware's beacon message limit; every copy carries it on the air.
@@ -129,7 +129,7 @@ class BastionBeaconLog {
 
   Future<void> load() async {
     try {
-      final raw = await _store.getString(_key);
+      final raw = await _store.getString(_storeName);
       if (raw != null) {
         for (final item in jsonDecode(raw) as List<Object?>) {
           _beacons.add(HeardBeacon.fromJson((item! as Map).cast<String, Object?>()));
@@ -144,7 +144,7 @@ class BastionBeaconLog {
 
   Future<void> _save() async {
     try {
-      await _store.setString(_key, jsonEncode([for (final b in _beacons) b.toJson()]));
+      await _store.setString(_storeName, jsonEncode([for (final b in _beacons) b.toJson()]));
     } catch (_) {
       // Persistence is best effort.
     }
