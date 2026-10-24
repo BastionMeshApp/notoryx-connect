@@ -287,8 +287,19 @@ class BastionTripController extends ChangeNotifier {
     } catch (_) {
       _problem = 'Saved trip details could not be read; the trip starts empty.';
     }
-    _timer ??= Timer.periodic(const Duration(seconds: 30), (_) => tick());
+    _updateTimer();
     notifyListeners();
+  }
+
+  /// Checks run only while a trip or an SOS needs them.
+  void _updateTimer() {
+    final needed = _plan.active || _sos.active;
+    if (needed) {
+      _timer ??= Timer.periodic(const Duration(seconds: 30), (_) => tick());
+    } else {
+      _timer?.cancel();
+      _timer = null;
+    }
   }
 
   Future<void> _save() async {
@@ -307,6 +318,7 @@ class BastionTripController extends ChangeNotifier {
       throw ArgumentError('A trip has at most ${TripPlan.maxMembers} contacts.');
     }
     _plan = plan;
+    _updateTimer();
     await _save();
     notifyListeners();
   }
@@ -395,6 +407,7 @@ class BastionTripController extends ChangeNotifier {
     if (blocked != null) throw StateError(blocked);
     final now = _clock().toUtc();
     _sos = SosState(active: true, startedAt: now);
+    _updateTimer();
     notifyListeners();
     await _sendSos(now);
   }
@@ -403,6 +416,7 @@ class BastionTripController extends ChangeNotifier {
   Future<void> stopSos({bool allClear = false}) async {
     if (!_sos.active) return;
     _sos = SosState.idle;
+    _updateTimer();
     notifyListeners();
     if (allClear && _radio.isReady) {
       final text = sosAllClearText(_clock().toUtc());

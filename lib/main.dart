@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'beacon_page.dart';
 import 'map_page.dart';
 import 'field_tools_page.dart';
+import 'home_page.dart';
 import 'services/bastion_field_log.dart';
 import 'services/bastion_background_service.dart';
 import 'services/bastion_bot_guard.dart';
@@ -104,9 +105,9 @@ class _BastionShellState extends State<BastionShell> {
   bool botMode = false;
   String awayReply = MeshtasticMessagingService.defaultAwayReply;
 
-  static const labels = ['NODES', 'CHATS', 'MAP', 'TOOLS', 'SETTINGS'];
+  static const labels = ['HOME', 'NODES', 'CHATS', 'MAP', 'TOOLS', 'SETTINGS'];
   static const icons = [
-    Icons.hub_outlined, Icons.chat_bubble_outline, Icons.map_outlined,
+    Icons.shield_outlined, Icons.hub_outlined, Icons.chat_bubble_outline, Icons.map_outlined,
     Icons.build_outlined, Icons.settings_outlined,
   ];
 
@@ -147,7 +148,8 @@ class _BastionShellState extends State<BastionShell> {
       ],
     ),
     body: SafeArea(child: IndexedStack(index: index, children: [
-      _NodesPage(discovery: ble, radio: radio, onOpenTools: () => setState(() => index = 3)),
+      HomePage(radio: radio, onConnect: () => setState(() => index = 1)),
+      _NodesPage(discovery: ble, radio: radio, onOpenTools: () => setState(() => index = 4)),
       BastionChatsPage(
         radio: radio,
         botMode: botMode,

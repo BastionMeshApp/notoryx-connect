@@ -3,10 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bastion/main.dart';
 
 void main() {
-  testWidgets('NOTORYX Connect exposes five functional field tabs', (tester) async {
+  testWidgets('NOTORYX Connect exposes six functional field tabs', (tester) async {
     await tester.pumpWidget(const BastionApp());
     expect(find.text('NOTORYX'), findsOneWidget);
     expect(find.text('CONNECT'), findsOneWidget);
+    // HOME opens first, with the trip, check-ins and SOS.
+    expect(find.text('NO RADIO CONNECTED'), findsOneWidget);
+    expect(find.text('PLAN YOUR TRIP'), findsOneWidget);
+    expect(find.text("CHECK IN: I'M OK"), findsOneWidget);
+    expect(find.text('HOLD FOR SOS'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.hub_outlined).last);
+    await tester.pumpAndSettle();
     expect(find.text('MESH COMMAND'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.chat_bubble_outline).last);
