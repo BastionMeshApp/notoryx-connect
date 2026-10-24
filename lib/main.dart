@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'beacon_page.dart';
 import 'map_page.dart';
 import 'field_tools_page.dart';
 import 'services/bastion_field_log.dart';
@@ -793,6 +794,20 @@ class _ToolsPageState extends State<_ToolsPage> {
           builder: (_) => MeshToolsPage(radio: widget.radio, initialTab: 1),
         )),
       )),
+      AnimatedBuilder(
+        animation: widget.radio,
+        builder: (context, _) => Card(child: ListTile(
+          leading: const Icon(Icons.campaign_outlined),
+          title: const Text('MESH BEACONS', style: TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text(widget.radio.beacons.isEmpty
+              ? 'Hear mesh invitations nearby and send your own'
+              : '${widget.radio.beacons.length} heard • send your own'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+            builder: (_) => BeaconPage(radio: widget.radio),
+          )),
+        )),
+      ),
       AnimatedBuilder(
         animation: widget.radio,
         builder: (context, _) => Card(child: ListTile(

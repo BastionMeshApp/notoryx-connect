@@ -13,6 +13,7 @@ import '../generated/meshtastic/mesh.pb.dart'
     as pb
     show Data, FromRadio, MeshPacket, Position, ToRadio, DeviceMetadata;
 import '../generated/meshtastic/mesh.pb.dart' show User;
+import '../generated/meshtastic/mesh_beacon.pb.dart';
 import '../generated/meshtastic/module_config.pb.dart';
 import '../generated/meshtastic/portnums.pbenum.dart';
 import '../generated/meshtastic/telemetry.pb.dart';
@@ -27,6 +28,7 @@ import 'bastion_field_alerts.dart';
 import 'bastion_field_log.dart';
 import 'bastion_settings_evidence.dart';
 import 'bastion_waypoints.dart';
+import 'bastion_beacons.dart';
 import 'bastion_owner_codec.dart';
 import 'bastion_owner_readback.dart';
 import 'bastion_message_archive.dart';
@@ -65,6 +67,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     unawaited(_loadSharePreference());
     _bluetoothSubscription = _bluetooth.changes.listen(_handleBluetoothChange);
     unawaited(_waypoints.load().then((_) => notifyListeners()));
+    unawaited(_beacons.load().then((_) => notifyListeners()));
     _lifecycle = AppLifecycleListener(
       onStateChange: (state) =>
           _inForeground = state == AppLifecycleState.resumed,
@@ -94,6 +97,9 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     notifyListeners();
     return settings.save();
   }
+
+  /// The best known name for node [num].
+  String nodeName(int num) => _nodeName(num);
 
   String _nodeName(int num) {
     for (final node in _nodes) {
@@ -166,6 +172,7 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
   /// A link was lost while Bluetooth was off; reconnect when it returns.
   bool _waitingForBluetooth = false;
   final BastionWaypointStore _waypoints = BastionWaypointStore();
+  final BastionBeaconLog _beacons = BastionBeaconLog();
   final MeshtasticMeshTools _meshTools = MeshtasticMeshTools();
   StreamSubscription<Uint8List>? _meshToolsSubscription;
   StreamSubscription<Uint8List>? _waypointSubscription;
@@ -624,7 +631,8 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
         try {
           final envelope = pb.FromRadio.fromBuffer(bytes);
           if (envelope.hasPacket() &&
-              await _waypoints.handlePacket(envelope.packet)) {
+              (await _waypoints.handlePacket(envelope.packet) ||
+                  await _beacons.handlePacket(envelope.packet))) {
             notifyListeners();
           }
         } catch (_) {
@@ -1070,6 +1078,46 @@ class MeshtasticRadioCoordinator extends ChangeNotifier
     }
     await session.send(BastionWaypointStore.encode(waypoint, channel: channel));
     await _waypoints.apply(waypoint);
+    notifyListeners();
+  }
+
+  /// Mesh Beacons heard on the mesh, newest first.
+  List<HeardBeacon> get beacons => _beacons.beacons;
+
+  /// When the next beacon may be sent; null when one may be sent now.
+  DateTime? get nextBeaconAllowed => _beacons.nextSendAllowed;
+
+  Future<void> clearBeacons() async {
+    await _beacons.clear();
+    notifyListeners();
+  }
+
+  /// Broadcasts a Mesh Beacon with [message] on the primary channel, at most
+  /// once per [BastionBeaconLog.sendInterval]. With [offerPrimaryChannel] it
+  /// also advertises the primary channel's name and key and this radio's
+  /// region and modem preset, so listeners can join; that shares the key with
+  /// anyone in range.
+  Future<void> sendBeacon(String message, {bool offerPrimaryChannel = false}) async {
+    BastionBeaconLog.checkMessage(message);
+    if (_beacons.nextSendAllowed case final next?) {
+      throw StateError('Beacons are limited to one an hour; the next can be sent at '
+          '${next.toLocal().toString().substring(11, 16)}.');
+    }
+    final session = _session;
+    if (_busy || !connection.isReady || session == null) {
+      throw StateError('Radio must be connected and ready.');
+    }
+    final beacon = MeshBeacon(message: message.trim());
+    if (offerPrimaryChannel) {
+      final set = await readChannelSet();
+      if (set.settings.isEmpty) throw StateError('This radio has no primary channel to offer.');
+      beacon
+        ..offerChannel = set.settings.first
+        ..offerRegion = set.loraConfig.region;
+      if (set.loraConfig.usePreset) beacon.offerPreset = set.loraConfig.modemPreset;
+    }
+    await session.send(BastionBeaconLog.encode(beacon));
+    await _beacons.recordSent();
     notifyListeners();
   }
 
