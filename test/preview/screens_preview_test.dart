@@ -6,6 +6,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:bastion/beacon_page.dart';
 import 'package:bastion/field_tools_page.dart';
 import 'package:bastion/main.dart';
 import 'package:bastion/phone_backup_page.dart';
@@ -67,6 +68,7 @@ void main() {
     'privacy': (radio) => PrivacyPage(radio: radio),
     'radio_backup': (radio) => RadioBackupPage(radio: radio),
     'phone_backup': (radio) => PhoneBackupPage(radio: radio),
+    'beacons': (radio) => BeaconPage(radio: radio),
   };
   for (final page in pages.entries) {
     testWidgets('page ${page.key}', (tester) async {

@@ -85,9 +85,12 @@ class _ChannelSharePageState extends State<ChannelSharePage> {
 
 /// Pastes a Meshtastic channel link and applies it to the radio.
 class ChannelImportPage extends StatefulWidget {
-  const ChannelImportPage({super.key, required this.radio});
+  const ChannelImportPage({super.key, required this.radio, this.initialLink});
 
   final MeshtasticRadioCoordinator radio;
+
+  /// A channel link to fill in, e.g. from a Mesh Beacon invitation.
+  final String? initialLink;
 
   @override
   State<ChannelImportPage> createState() => _ChannelImportPageState();
@@ -104,6 +107,16 @@ class _ChannelImportPageState extends State<ChannelImportPage> {
   /// Set after an import that may have changed the radio but was not
   /// verified; blocks a second write until the user checks the radio.
   bool _importUncertain = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final link = widget.initialLink;
+    if (link != null) {
+      _link.text = link;
+      _parse(link);
+    }
+  }
 
   @override
   void dispose() {
