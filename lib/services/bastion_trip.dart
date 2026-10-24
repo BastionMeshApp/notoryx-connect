@@ -233,7 +233,7 @@ class BastionTripController extends ChangeNotifier {
         _clock = clock ?? DateTime.now,
         _preferences = preferences;
 
-  static const _key = 'bastion.trip.v1';
+  static const _storeName = 'bastion.trip.v1';
   static const _keptCheckIns = 20;
 
   final TripRadio _radio;
@@ -275,7 +275,7 @@ class BastionTripController extends ChangeNotifier {
 
   Future<void> load() async {
     try {
-      final raw = await _store.getString(_key);
+      final raw = await _store.getString(_storeName);
       if (raw != null) {
         final json = (jsonDecode(raw) as Map).cast<String, Object?>();
         _plan = TripPlan.fromJson((json['plan'] as Map).cast<String, Object?>());
@@ -304,7 +304,7 @@ class BastionTripController extends ChangeNotifier {
 
   Future<void> _save() async {
     try {
-      await _store.setString(_key, jsonEncode({
+      await _store.setString(_storeName, jsonEncode({
         'plan': _plan.toJson(),
         'checkIns': [for (final c in _checkIns) c.toJson()],
       }));
