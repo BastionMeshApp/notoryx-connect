@@ -35,6 +35,9 @@ jobs:
           python3 scripts/prepare_android.py
           flutter pub get --enforce-lockfile
           dart run flutter_launcher_icons
+          # Fails if the Android launcher icon was not generated (e.g. a stray
+          # flutter_launcher_icons-*.yaml makes the tool skip the main config).
+          test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
           flutter analyze
           flutter test
           flutter build apk --release --target-platform android-arm64
